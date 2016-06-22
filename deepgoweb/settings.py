@@ -53,6 +53,7 @@ class BaseConfiguration(Configuration):
         'allauth',
         'allauth.account',
         'allauth.socialaccount',
+        'deepgo'
     ]
 
     MIDDLEWARE_CLASSES = [
@@ -71,7 +72,7 @@ class BaseConfiguration(Configuration):
     TEMPLATES = [
         {
             'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [],
+            'DIRS': [rel('templates')],
             'APP_DIRS': True,
             'OPTIONS': {
                 'context_processors': [
@@ -91,13 +92,27 @@ class BaseConfiguration(Configuration):
 
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'deepgoweb',
             'HOST': 'localhost',
             'USER': 'postgres',
             'PASSWORD': '111'
         }
     }
+
+    # Memcached
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+            'LOCATION': '127.0.0.1:11211',
+        }
+    }
+
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+    TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'
 
     # Password validation
     # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -134,6 +149,18 @@ class BaseConfiguration(Configuration):
     # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
     STATIC_URL = '/static/'
+    STATIC_ROOT = 'deepgoweb/public'
+    MEDIA_ROOT = 'deepgoweb/media'
+    MEDIA_URL = '/media/'
+
+    # User profile module
+    AUTH_PROFILE_MODULE = 'accounts.models.UserProfile'
+
+    STATICFILES_DIRS = (
+        rel('static'),)
+
+    SITE_ID = 1
+    SITE_DOMAIN = 'localhost:8000'
 
 
 class Development(BaseConfiguration):

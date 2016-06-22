@@ -12,6 +12,7 @@ numpy==1.11.0
 oauthlib==1.1.2
 protobuf==3.0.0b2
 psycopg2==2.6.1
+python-memcached==1.58
 python-openid==2.2.5
 pytz==2016.4
 PyYAML==3.11
