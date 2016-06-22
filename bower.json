@@ -1,0 +1,21 @@
+{
+  "name": "DeepGOWeb",
+  "version": "0.1",
+  "authors": [
+    "Maxat Kulmanov <coolmaksat@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "3.3.6",
+    "jquery": "2.2.4",
+    "font-awesome": "4.6.3",
+    "bootstrap-datepicker": "1.6.1"
+  }
+}
