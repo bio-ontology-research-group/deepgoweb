@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from configurations import Configuration
-import djcelery
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,9 +21,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def rel(*x):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), *x)
 
-sys.path.insert(0, rel('apps'))
 
-djcelery.setup_loader()
+sys.path.insert(0, rel('apps'))
 
 
 class BaseConfiguration(Configuration):
@@ -48,12 +46,12 @@ class BaseConfiguration(Configuration):
         'django.contrib.messages',
         'django.contrib.staticfiles',
         'django.contrib.sites',
-        'djcelery',
         'accounts',
         'allauth',
         'allauth.account',
         'allauth.socialaccount',
-        'deepgo'
+        'deepgo',
+        'widget_tweaks'
     ]
 
     MIDDLEWARE_CLASSES = [
@@ -161,6 +159,8 @@ class BaseConfiguration(Configuration):
 
     SITE_ID = 1
     SITE_DOMAIN = 'localhost:8000'
+
+    CELERYD_CONCURRENCY = 1
 
 
 class Development(BaseConfiguration):

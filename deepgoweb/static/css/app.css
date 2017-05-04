@@ -1,7 +1,10 @@
 body {
   padding-top: 50px;
 }
-.starter-template {
+.content {
   padding: 40px 15px;
-  text-align: center;
+}
+
+.sequence {
+    word-wrap: break-word;
 }

@@ -1,7 +1,10 @@
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import login_required
-from deepgo.views import PredictionFormView
+from deepgo.views import (
+    PredictionDetailView,
+    PredictionCreateView)
 
 urlpatterns = [
-    url(r'^$', PredictionFormView.as_view(), name='deepgo-prediction'),
+    url(r'^$', PredictionCreateView.as_view(), name='prediction'),
+    url(r'^detail/(?P<pk>\d+)/$', PredictionDetailView.as_view(), name='prediction-detail'),
 ]
