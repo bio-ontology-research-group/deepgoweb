@@ -1,4 +1,6 @@
 from collections import deque
+import pandas as pd
+from keras import backend as K
 
 BIOLOGICAL_PROCESS = 'GO:0008150'
 MOLECULAR_FUNCTION = 'GO:0003674'
@@ -93,6 +95,46 @@ def get_go_set(go, go_id):
         for ch_id in go[g_id]['children']:
             q.append(ch_id)
     return go_set
+
+
+def load_model_weights(model, filepath):
+    ''' Name-based weight loading
+    Layers that have no matching name are skipped.
+    '''
+    if hasattr(model, 'flattened_layers'):
+        # Support for legacy Sequential/Merge behavior.
+        flattened_layers = model.flattened_layers
+    else:
+        flattened_layers = model.layers
+
+    df = pd.read_pickle(filepath)
+
+    # Reverse index of layer name to list of layers with name.
+    index = {}
+    for layer in flattened_layers:
+        if layer.name:
+            index[layer.name] = layer
+
+    # We batch weight value assignments in a single backend call
+    # which provides a speedup in TensorFlow.
+    weight_value_tuples = []
+    for row in df.iterrows():
+        row = row[1]
+        name = row['layer_names']
+        weight_values = row['weight_values']
+        if name in index:
+            symbolic_weights = index[name].weights
+            if len(weight_values) != len(symbolic_weights):
+                raise Exception('Layer named "' + layer.name +
+                                '") expects ' + str(len(symbolic_weights)) +
+                                ' weight(s), but the saved weights' +
+                                ' have ' + str(len(weight_values)) +
+                                ' element(s).')
+            # Set values.
+            for i in range(len(weight_values)):
+                weight_value_tuples.append(
+                    (symbolic_weights[i], weight_values[i]))
+    K.batch_set_value(weight_value_tuples)
 
 
 go = get_gene_ontology()

@@ -3,23 +3,31 @@ from celery.signals import worker_init
 
 import numpy as np
 import pandas as pd
-from keras.models import Model, model_from_json
+from keras.models import Model, model_from_json, load_model
 from keras.preprocessing import sequence
 from deepgo.constants import (
     AAINDEX, MAXLEN)
-# import tensorflow as tf
+from deepgo.utils import load_model_weights
+import tensorflow as tf
 
 models = list()
-devs = [('cc', '/gpu:0'), ('mf', '/gpu:0'), ('bp', '/gpu:1')]
-# devs = [('bp', '/gpu:0')]
+devs = [('cc', '/gpu:1'), ('mf', '/gpu:1'), ('bp', '/gpu:1')]
+ngram_df = pd.read_pickle('data/models/ngrams.pkl')
+vocab = {}
+for key, gram in enumerate(ngram_df['ngrams']):
+    vocab[gram] = key + 1
+gram_len = len(ngram_df['ngrams'][0])
+print('Gram length:', gram_len)
+print('Vocabulary size:', len(vocab))
 
 
 def get_data(sequences):
     n = len(sequences)
-    data = np.zeros((n, MAXLEN), dtype='float32')
-    for i in range(n):
-        for j in range(len(sequences[i])):
-            data[i, j] = AAINDEX[sequences[i][j]]
+    data = np.zeros((n, MAXLEN), dtype='int32')
+    for i in xrange(len(sequences)):
+        seq = sequences[i]
+        for j in xrange(len(seq) - gram_len + 1):
+            data[i, j] = vocab[seq[j: (j + gram_len)]]
     return data
 
 
@@ -27,16 +35,16 @@ def predict(data, model, functions):
     batch_size = 1
     n = data.shape[0]
     result = list()
-    for i in range(n):
+    for i in xrange(n):
         result.append(list())
     predictions = model.predict(
         data, batch_size=batch_size)
-    for i in range(len(functions)):
-        rpred = predictions[i].flatten()
+    for i in xrange(n):
+        rpred = predictions[i]
         pred = np.round(rpred)
-        for j in range(n):
+        for j in xrange(len(functions)):
             if pred[j] == 1:
-                result[j].append(functions[i])
+                result[i].append(functions[j])
     return result
 
 
@@ -46,16 +54,14 @@ def init_models(conf=None, **kwargs):
     print 'Init'
     data = get_data(sequences)
     for onto, dev in devs:
-        with open('models/%s/model.json' % onto, 'r') as f:
-            json_string = next(f)
-        # with tf.device(dev):
-        model = model_from_json(json_string)
+        model = load_model('data/models/model_%s.h5' % onto)
         model.compile(
             optimizer='rmsprop',
             loss='binary_crossentropy',
             metrics=['accuracy'])
-        model.load_weights('models/%s/weights.hdf5' % onto)
-        df = pd.read_pickle('models/%s/functions.pkl' % onto)
+        # load_model_weights(
+        #     model, 'data/models/model_seq_weights_%s.pkl' % onto)
+        df = pd.read_pickle('data/models/%s.pkl' % onto)
         functions = df['functions']
         models.append((model, functions))
         print 'Model %s initialized. Running first predictions' % onto
@@ -66,6 +72,7 @@ def init_models(conf=None, **kwargs):
 @task
 def predict_functions(sequences):
     if not models:
+        # with tf.device('/gpu:1'):
         init_models()
     data = get_data(sequences)
     result = list()

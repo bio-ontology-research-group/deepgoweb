@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from configurations import Configuration
+from kombu import Exchange, Queue
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -160,7 +161,39 @@ class BaseConfiguration(Configuration):
     SITE_ID = 1
     SITE_DOMAIN = 'localhost:8000'
 
-    CELERYD_CONCURRENCY = 1
+    # Celery configuration
+    RABBIT_HOST = 'localhost'
+    RABBIT_PORT = 5672
+
+    CELERY_BROKER_URL = 'pyamqp://{user}:{pwd}@{host}:{port}//'.format(
+        user=os.environ.get('RABBIT_USER', 'guest'),
+        pwd=os.environ.get('RABBIT_PASSWORD', 'guest'),
+        host=RABBIT_HOST,
+        port=RABBIT_PORT)
+
+    CELERY_RESULT_BACKEND = 'rpc://'
+    CELERY_WORKER_CONCURRENCY = 1
+    CELERY_BROKER_POOL_LIMIT = 1
+    CELERY_BROKER_CONNECTION_TIMEOUT = 10
+
+    # configure queues, currently we have only one
+    CELERY_DEFAULT_QUEUE = 'default'
+    CELERY_QUEUES = (
+        Queue('default', Exchange('default'), routing_key='default'),
+    )
+
+    # Sensible settings for celery
+    CELERY_ALWAYS_EAGER = False
+    CELERY_ACKS_LATE = True
+    CELERY_TASK_PUBLISH_RETRY = True
+    CELERY_DISABLE_RATE_LIMITS = False
+
+    # By default we will ignore result
+    # If you want to see results and try out tasks interactively, change it to False
+    # Or change this setting on tasks level
+    CELERY_IGNORE_RESULT = True
+    CELERY_SEND_TASK_ERROR_EMAILS = False
+    CELERY_TASK_RESULT_EXPIRES = 600
 
 
 class Development(BaseConfiguration):
