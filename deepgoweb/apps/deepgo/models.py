@@ -6,14 +6,15 @@ from django.contrib.auth.models import User
 from deepgo.utils import go
 
 
-DATA_FORMAT_CHOICES = (
-    ('enter', 'Splitted by enters'),
-    ('fasta', 'FASTA'))
-
-
 class PredictionGroup(models.Model):
+    DATA_FORMAT_CHOICES = (
+        ('enter', 'Raw Sequence'),)
+
     data = models.TextField()
-    data_format = models.CharField(max_length=10, choices=DATA_FORMAT_CHOICES)
+    data_format = models.CharField(
+        max_length=10,
+        choices=DATA_FORMAT_CHOICES,
+        default='enter')
     user = models.ForeignKey(User, related_name='prediction_groups', null=True)
     date = models.DateTimeField()
 

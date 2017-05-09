@@ -3,7 +3,8 @@ from deepgo.models import Prediction, PredictionGroup
 import datetime
 from deepgo.tasks import predict_functions
 from django.core.exceptions import ValidationError
-from deepgo.utils import go, get_anchestors
+from deepgo.utils import go, get_anchestors, is_ok
+from deepgo.constants import MAXLEN
 
 
 def filter_specific(gos):
@@ -23,19 +24,33 @@ class PredictionForm(forms.ModelForm):
         model = PredictionGroup
         fields = ['data', 'data_format']
 
+    def clean_data(self):
+        data = self.cleaned_data['data']
+        seqs = data.split()
+        for seq in seqs:
+            seq = seq.strip()
+            if len(seq) > MAXLEN:
+                raise ValidationError(
+                    'Sequence length should not be more than 1002!')
+            if not is_ok(seq):
+                raise ValidationError(
+                    'Sequence contains invalid amino acids!')
+        return data
+
     def clean_data_format(self):
         data_format = self.cleaned_data['data_format']
         if data_format != 'enter':
             raise ValidationError(
-                'Only splitted by enters format is supported')
+                'Only Raw Sequence format is supported')
         return data_format
 
     def save(self):
         self.instance.date = datetime.datetime.now()
         data = self.cleaned_data['data']
-        data = data.replace(' ', '')
         sequences = data.split()
         n = len(sequences)
+        for i in xrange(n):
+            sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(sequences)
         preds = preds.get()
         cc = preds[0: n]

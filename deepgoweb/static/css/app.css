@@ -2,9 +2,70 @@ body {
   padding-top: 50px;
 }
 .content {
-  padding: 40px 15px;
+  padding: 15px 15px;
 }
 
 .sequence {
+    word-wrap: break-word;
+}
+
+.navbar-deepgo {
+  background-color: #428bca;
+  border-color: #428bca;
+}
+.navbar-deepgo .navbar-brand {
+  color: #fff;
+}
+.navbar-deepgo .navbar-brand:hover,
+.navbar-deepgo .navbar-brand:focus {
+  color: #fff;
+  background-color: transparent;
+}
+.navbar-deepgo .navbar-text {
+  color: #cdddeb;
+}
+.navbar-deepgo .navbar-nav > li > a {
+  color: #cdddeb;
+}
+.navbar-deepgo .navbar-nav > li > a:hover,
+.navbar-deepgo .navbar-nav > li > a:focus {
+  color: #fff;
+  background-color: transparent;
+}
+.navbar-deepgo .navbar-nav > .active > a,
+.navbar-deepgo .navbar-nav > .active > a:hover,
+.navbar-deepgo .navbar-nav > .active > a:focus {
+  color: #fff;
+  background-color: #444;
+}
+.navbar-deepgo .navbar-nav > .disabled > a,
+.navbar-deepgo .navbar-nav > .disabled > a:hover,
+.navbar-deepgo .navbar-nav > .disabled > a:focus {
+  color: #444;
+  background-color: transparent;
+}
+.navbar-deepgo .navbar-toggle {
+  border-color: #333;
+}
+.navbar-deepgo .navbar-toggle:hover,
+.navbar-deepgo .navbar-toggle:focus {
+  background-color: #333;
+}
+.navbar-deepgo .navbar-toggle .icon-bar {
+  background-color: #fff;
+}
+.navbar-deepgo .navbar-collapse,
+.navbar-deepgo .navbar-form {
+  border-color: #428bca;
+}
+.navbar-deepgo .navbar-nav > .open > a,
+.navbar-deepgo .navbar-nav > .open > a:hover,
+.navbar-deepgo .navbar-nav > .open > a:focus {
+  color: #fff;
+  background-color: #428bca;
+}
+
+
+.deepgo-sequence {
     word-wrap: break-word;
 }

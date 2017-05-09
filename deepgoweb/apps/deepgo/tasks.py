@@ -1,13 +1,9 @@
 from celery import task
-from celery.signals import worker_init
 
 import numpy as np
 import pandas as pd
-from keras.models import Model, model_from_json, load_model
-from keras.preprocessing import sequence
-from deepgo.constants import (
-    AAINDEX, MAXLEN)
-from deepgo.utils import load_model_weights
+from keras.models import load_model
+from deepgo.constants import MAXLEN
 import tensorflow as tf
 
 models = list()
@@ -23,7 +19,7 @@ print('Vocabulary size:', len(vocab))
 
 def get_data(sequences):
     n = len(sequences)
-    data = np.zeros((n, MAXLEN), dtype='int32')
+    data = np.zeros((n, 1000), dtype='int32')
     for i in xrange(len(sequences)):
         seq = sequences[i]
         for j in xrange(len(seq) - gram_len + 1):
@@ -54,13 +50,11 @@ def init_models(conf=None, **kwargs):
     print 'Init'
     data = get_data(sequences)
     for onto, dev in devs:
-        model = load_model('data/models/model_%s.h5' % onto)
+        model = load_model('data/models/model_seq_%s.h5' % onto)
         model.compile(
             optimizer='rmsprop',
             loss='binary_crossentropy',
             metrics=['accuracy'])
-        # load_model_weights(
-        #     model, 'data/models/model_seq_weights_%s.pkl' % onto)
         df = pd.read_pickle('data/models/%s.pkl' % onto)
         functions = df['functions']
         models.append((model, functions))

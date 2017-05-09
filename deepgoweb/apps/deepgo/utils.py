@@ -1,10 +1,21 @@
 from collections import deque
 import pandas as pd
 from keras import backend as K
+from constants import (
+    BIOLOGICAL_PROCESS,
+    MOLECULAR_FUNCTION,
+    CELLULAR_COMPONENT,
+    MAXLEN,
+    AACIDS)
 
-BIOLOGICAL_PROCESS = 'GO:0008150'
-MOLECULAR_FUNCTION = 'GO:0003674'
-CELLULAR_COMPONENT = 'GO:0005575'
+
+def is_ok(seq):
+    if len(seq) > MAXLEN:
+        return False
+    for c in seq:
+        if c not in AACIDS:
+            return False
+    return True
 
 
 def get_gene_ontology(filename='go.obo'):
