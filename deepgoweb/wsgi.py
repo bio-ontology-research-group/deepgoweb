@@ -9,10 +9,9 @@ https://docs.djangoproject.com/en/1.9/howto/deployment/wsgi/
 
 import os
 
-from configurations.wsgi import get_wsgi_application
 
 os.environ.setdefault("DJANGO_CONFIGURATION", "Production")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "deepgoweb.settings")
 
-
+from configurations.wsgi import get_wsgi_application
 application = get_wsgi_application()
