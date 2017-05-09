@@ -198,3 +198,7 @@ class BaseConfiguration(Configuration):
 
 class Development(BaseConfiguration):
     pass
+
+class Production(BaseConfiguration):
+    DEBUG = False
+
