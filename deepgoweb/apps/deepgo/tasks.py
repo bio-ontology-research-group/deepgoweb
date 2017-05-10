@@ -36,8 +36,7 @@ def predict(data, model, functions):
     predictions = model.predict(
         data, batch_size=batch_size)
     for i in xrange(n):
-        rpred = predictions[i]
-        pred = np.round(rpred)
+        pred = (predictions[i] >= 0.3).astype('int32')
         for j in xrange(len(functions)):
             if pred[j] == 1:
                 result[i].append(functions[j])
