@@ -15,7 +15,7 @@ class PredictionGroup(models.Model):
     data_format = models.CharField(
         max_length=10,
         choices=DATA_FORMAT_CHOICES,
-        default='enter')
+        default='fasta')
     user = models.ForeignKey(User, related_name='prediction_groups', null=True)
     date = models.DateTimeField()
 

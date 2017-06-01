@@ -29,6 +29,7 @@ def read_fasta(lines):
             if seq != '':
                 seqs.append(seq)
                 info.append(inf)
+                seq = ''
             inf = line[1:]
         else:
             seq += line
