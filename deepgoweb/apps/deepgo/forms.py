@@ -18,15 +18,46 @@ def filter_specific(gos):
     return list(go_set)
 
 
+def read_fasta(lines):
+    seqs = list()
+    info = list()
+    seq = ''
+    inf = ''
+    for line in lines:
+        line = line.strip()
+        if line.startswith('>'):
+            if seq != '':
+                seqs.append(seq)
+                info.append(inf)
+            inf = line[1:]
+        else:
+            seq += line
+    seqs.append(seq)
+    info.append(inf)
+    return info, seqs
+
+
 class PredictionForm(forms.ModelForm):
 
     class Meta:
         model = PredictionGroup
-        fields = ['data', 'data_format']
+        fields = ['data_format', 'data']
+
+    def clean_data_format(self):
+        data_format = self.cleaned_data['data_format']
+        if data_format not in ('enter', 'fasta'):
+            raise ValidationError(
+                'Format is not supported')
+        return data_format
 
     def clean_data(self):
         data = self.cleaned_data['data']
-        seqs = data.split()
+        fmt = self.cleaned_data['data_format']
+        lines = data.splitlines()
+        if fmt == 'enter':
+            seqs = lines
+        else:
+            info, seqs = read_fasta(lines)
         for seq in seqs:
             seq = seq.strip()
             if len(seq) > MAXLEN:
@@ -37,17 +68,15 @@ class PredictionForm(forms.ModelForm):
                     'Sequence contains invalid amino acids!')
         return data
 
-    def clean_data_format(self):
-        data_format = self.cleaned_data['data_format']
-        if data_format != 'enter':
-            raise ValidationError(
-                'Only Raw Sequence format is supported')
-        return data_format
-
     def save(self):
         self.instance.date = datetime.datetime.now()
         data = self.cleaned_data['data']
-        sequences = data.split()
+        lines = data.splitlines()
+        fmt = self.cleaned_data['data_format']
+        if fmt == 'enter':
+            sequences = lines
+        else:
+            info, sequences = read_fasta(lines)
         n = len(sequences)
         for i in xrange(n):
             sequences[i] = sequences[i].strip()
@@ -59,7 +88,10 @@ class PredictionForm(forms.ModelForm):
         self.instance.save()
         predictions = list()
         for i in range(n):
-            pred = Prediction(sequence=sequences[i])
+            if fmt == 'enter':
+                pred = Prediction(sequence=sequences[i])
+            else:
+                pred = Prediction(protein_info=info[i], sequence=sequences[i])
             pred.functions = filter_specific(cc[i] + mf[i] + bp[i])
             pred.group = self.instance
             predictions.append(pred)

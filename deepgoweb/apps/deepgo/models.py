@@ -8,7 +8,8 @@ from deepgo.utils import go
 
 class PredictionGroup(models.Model):
     DATA_FORMAT_CHOICES = (
-        ('enter', 'Raw Sequence'),)
+        ('enter', 'Raw Sequence'),
+        ('fasta', 'FASTA'))
 
     data = models.TextField()
     data_format = models.CharField(
@@ -20,6 +21,7 @@ class PredictionGroup(models.Model):
 
 
 class Prediction(models.Model):
+    protein_info = models.CharField(max_length=255, blank=True, null=True)
     sequence = models.TextField()
     functions = ArrayField(
         models.CharField(max_length=10), blank=True, null=True)

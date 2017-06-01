@@ -4,7 +4,9 @@
 {% block content %}
 {% for pred in object.predictions.all %}
   <div class="row">
-    <div class="col-md-6 sequence">{{ pred.sequence }}</div>
+    <div class="col-md-6 sequence">
+      {% if pred.protein_info %}{{ pred.protein_info }} <br/> {% endif %} {{ pred.sequence }}
+    </div>
     <div class="col-md-6">
       <ul class="list">
       {% for function in pred.function_names %}
