@@ -34,3 +34,11 @@ class Prediction(models.Model):
                 yield (func, go[func]['name'])
             else:
                 yield (func, '')
+
+                
+class Protein(models.Model):
+    uni_accession = models.CharField(max_length=16, unique=True)
+    uni_entry_id = models.CharField(max_length=16, unique=True)
+    sequence = models.TextField()
+    sequence_md5 = models.CharField(max_length=32, db_index=True)
+    ppi_embedding = ArrayField(models.FloatField())

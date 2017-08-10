@@ -4,11 +4,16 @@ import numpy as np
 import pandas as pd
 from keras.models import load_model
 from deepgo.constants import MAXLEN
+from deepgo.models import Protein
 import tensorflow as tf
+import md5
+from subprocess import Popen, PIPE
 
 models = list()
-devs = [('cc', '/gpu:1'), ('mf', '/gpu:1'), ('bp', '/gpu:1')]
+funcs = ['cc', 'mf', 'bp']
 ngram_df = pd.read_pickle('data/models/ngrams.pkl')
+embed_df = pd.read_pickle('data/graph_new_embeddings.pkl')
+
 vocab = {}
 for key, gram in enumerate(ngram_df['ngrams']):
     vocab[gram] = key + 1
@@ -19,17 +24,40 @@ print('Vocabulary size:', len(vocab))
 
 def get_data(sequences):
     n = len(sequences)
-    data = np.zeros((n, 1000), dtype='int32')
+    data = np.zeros((n, 1000), dtype=np.float32)
+    embeds = np.zeros((n, 256), dtype=np.float32)
+
+    # hashes = list()
+    # for seq in sequences:
+    #     hashes.append(md5.md5(seq).hexdigest())
+    # prots = Protein.objects.filter(sequence_md5__in=hashes)
+    
+    p = Popen(['blastp', '-db', 'data/embeddings.fa',
+               '-max_target_seqs', '1', '-num_threads', '128',
+               '-outfmt', '6 qseqid sseqid'], stdin=PIPE, stdout=PIPE)
+    for i in xrange(n):
+        p.stdin.write('>' + str(i) + '\n' + sequences[i] + '\n')
+    p.stdin.close()
+
+    prot_ids = {}
+    if p.wait() == 0:
+        for line in p.stdout:
+            it = line.strip().split('\t')
+            prot_ids[it[1]] = int(it[0])
+    prots = embed_df[embed_df['accessions'].isin(prot_ids.keys())]
+    for i, row in prots.iterrows():
+        embeds[prot_ids[row['accessions']], :] = row['embeddings']
+        
     for i in xrange(len(sequences)):
         seq = sequences[i]
         for j in xrange(len(seq) - gram_len + 1):
             data[i, j] = vocab[seq[j: (j + gram_len)]]
-    return data
+    return [data, embeds]
 
 
 def predict(data, model, functions):
     batch_size = 1
-    n = data.shape[0]
+    n = data[0].shape[0]
     result = list()
     for i in xrange(n):
         result.append(list())
@@ -48,12 +76,8 @@ def init_models(conf=None, **kwargs):
     sequences = ['MKKVLVINGPNLNLLGIREKNIYGSVSYEDVLKSISRKAQELGFEVEFFQSNHEGEIIDKIHRAYFEKVDAIIINPGAYTHYSYAIHDAIKAVNIPTIEVHISNIHAREEFRHKSVIAPACTGQISGFGIKSYIIALYALKEILD']
     print 'Init'
     data = get_data(sequences)
-    for onto, dev in devs:
-        model = load_model('data/models/model_seq_%s.h5' % onto)
-        model.compile(
-            optimizer='rmsprop',
-            loss='binary_crossentropy',
-            metrics=['accuracy'])
+    for onto in funcs:
+        model = load_model('data/models/model_%s.h5' % onto)
         df = pd.read_pickle('data/models/%s.pkl' % onto)
         functions = df['functions']
         models.append((model, functions))
@@ -65,12 +89,11 @@ def init_models(conf=None, **kwargs):
 @task
 def predict_functions(sequences):
     if not models:
-        # with tf.device('/gpu:1'):
         init_models()
     data = get_data(sequences)
     result = list()
     for i in range(len(models)):
         model, functions = models[i]
-        print 'Running predictions for model %s' % devs[i][0]
+        print 'Running predictions for model %s' % funcs[i]
         result += predict(data, model, functions)
     return result
