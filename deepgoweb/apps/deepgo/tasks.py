@@ -11,15 +11,6 @@ from subprocess import Popen, PIPE
 
 models = list()
 funcs = ['cc', 'mf', 'bp']
-ngram_df = pd.read_pickle('data/models/ngrams.pkl')
-embed_df = pd.read_pickle('data/graph_new_embeddings.pkl')
-
-vocab = {}
-for key, gram in enumerate(ngram_df['ngrams']):
-    vocab[gram] = key + 1
-gram_len = len(ngram_df['ngrams'][0])
-print('Gram length:', gram_len)
-print('Vocabulary size:', len(vocab))
 
 
 def get_data(sequences):
@@ -72,9 +63,21 @@ def predict(data, model, functions):
 
 
 def init_models(conf=None, **kwargs):
+    print('Init')
     global models
+    ngram_df = pd.read_pickle('data/models/ngrams.pkl')
+    global embed_df
+    embed_df = pd.read_pickle('data/graph_new_embeddings.pkl')
+    global vocab
+    vocab = {}
+    global gram_len
+    for key, gram in enumerate(ngram_df['ngrams']):
+        vocab[gram] = key + 1
+        gram_len = len(ngram_df['ngrams'][0])
+    print('Gram length:', gram_len)
+    print('Vocabulary size:', len(vocab))
+
     sequences = ['MKKVLVINGPNLNLLGIREKNIYGSVSYEDVLKSISRKAQELGFEVEFFQSNHEGEIIDKIHRAYFEKVDAIIINPGAYTHYSYAIHDAIKAVNIPTIEVHISNIHAREEFRHKSVIAPACTGQISGFGIKSYIIALYALKEILD']
-    print 'Init'
     data = get_data(sequences)
     for onto in funcs:
         model = load_model('data/models/model_%s.h5' % onto)
