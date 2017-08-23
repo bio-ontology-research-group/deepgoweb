@@ -76,7 +76,7 @@ def init_models(conf=None, **kwargs):
         gram_len = len(ngram_df['ngrams'][0])
     print('Gram length:', gram_len)
     print('Vocabulary size:', len(vocab))
-
+    threshold = 0.3
     sequences = ['MKKVLVINGPNLNLLGIREKNIYGSVSYEDVLKSISRKAQELGFEVEFFQSNHEGEIIDKIHRAYFEKVDAIIINPGAYTHYSYAIHDAIKAVNIPTIEVHISNIHAREEFRHKSVIAPACTGQISGFGIKSYIIALYALKEILD']
     data = get_data(sequences)
     for onto in funcs:
@@ -85,7 +85,7 @@ def init_models(conf=None, **kwargs):
         functions = df['functions']
         models.append((model, functions))
         print 'Model %s initialized. Running first predictions' % onto
-        result = predict(data, model, functions)
+        result = predict(data, model, functions, threshold)
         print result
 
 
