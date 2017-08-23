@@ -10,6 +10,10 @@ from deepgo.constants import MAXLEN
 
 class PredictionForm(forms.ModelForm):
 
+    threshold = forms.FloatField(
+        min_value=0.0, max_value=1.0,
+        widget=forms.NumberInput(attrs={'step':0.1}))
+
     class Meta:
         model = PredictionGroup
         fields = ['data_format', 'threshold', 'data']
