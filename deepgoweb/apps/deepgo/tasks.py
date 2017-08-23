@@ -46,7 +46,7 @@ def get_data(sequences):
     return [data, embeds]
 
 
-def predict(data, model, functions):
+def predict(data, model, functions, threshold):
     batch_size = 1
     n = data[0].shape[0]
     result = list()
@@ -55,7 +55,7 @@ def predict(data, model, functions):
     predictions = model.predict(
         data, batch_size=batch_size)
     for i in xrange(n):
-        pred = (predictions[i] >= 0.3).astype('int32')
+        pred = (predictions[i] >= threshold).astype('int32')
         for j in xrange(len(functions)):
             if pred[j] == 1:
                 result[i].append(functions[j])
@@ -90,7 +90,7 @@ def init_models(conf=None, **kwargs):
 
 
 @task
-def predict_functions(sequences):
+def predict_functions(sequences, threshold=0.3):
     if not models:
         init_models()
     data = get_data(sequences)
@@ -98,5 +98,5 @@ def predict_functions(sequences):
     for i in range(len(models)):
         model, functions = models[i]
         print 'Running predictions for model %s' % funcs[i]
-        result += predict(data, model, functions)
+        result += predict(data, model, functions, threshold)
     return result

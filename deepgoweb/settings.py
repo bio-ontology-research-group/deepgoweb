@@ -52,7 +52,8 @@ class BaseConfiguration(Configuration):
         'allauth.account',
         'allauth.socialaccount',
         'deepgo',
-        'widget_tweaks'
+        'widget_tweaks',
+        'rest_framework',
     ]
 
     MIDDLEWARE_CLASSES = [

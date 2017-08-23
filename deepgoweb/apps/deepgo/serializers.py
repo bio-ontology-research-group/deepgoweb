@@ -1,30 +1,38 @@
-from django import forms
 from deepgo.models import Prediction, PredictionGroup
-import datetime
-from deepgo.tasks import predict_functions
-from django.core.exceptions import ValidationError
+from rest_framework import serializers
 from deepgo.utils import (
     is_ok, read_fasta, filter_specific)
 from deepgo.constants import MAXLEN
+import datetime
+from deepgo.tasks import predict_functions
 
 
-class PredictionForm(forms.ModelForm):
+class PredictionSerializer(serializers.ModelSerializer):
 
     class Meta:
+        model = Prediction
+        fields = ['sequence', 'functions']
+
+        
+class PredictionGroupSerializer(serializers.ModelSerializer):
+
+    predictions = PredictionSerializer(many=True, read_only=True)
+    
+    class Meta:
         model = PredictionGroup
-        fields = ['data_format', 'threshold', 'data']
+        fields = ['id', 'data_format', 'data', 'threshold', 'predictions']
+        extra_kwargs = {
+            'data': {'write_only': True}}
+        
 
-    def clean_data_format(self):
-        data_format = self.cleaned_data['data_format']
-        if data_format not in ('enter', 'fasta'):
-            raise ValidationError(
+
+    def validate(self, data):
+        fmt = data['data_format']
+        if fmt not in ('enter', 'fasta'):
+            raise serializers.ValidationError(
                 'Format is not supported')
-        return data_format
-
-    def clean_data(self):
-        data = self.cleaned_data['data']
-        fmt = self.cleaned_data['data_format']
-        lines = data.splitlines()
+        seq_data = data['data']
+        lines = seq_data.splitlines()
         if fmt == 'enter':
             seqs = lines
         else:
@@ -32,18 +40,22 @@ class PredictionForm(forms.ModelForm):
         for seq in seqs:
             seq = seq.strip()
             if len(seq) > MAXLEN:
-                raise ValidationError(
+                raise serializers.ValidationError(
                     'Sequence length should not be more than 1002!')
             if not is_ok(seq):
-                raise ValidationError(
+                raise serializers.ValidationError(
                     'Sequence contains invalid amino acids!')
         return data
 
     def save(self):
-        self.instance.date = datetime.datetime.now()
-        data = self.cleaned_data['data']
+        fmt = self.validated_data['data_format']
+        data = self.validated_data['data']
+        self.instance = PredictionGroup(
+            data_format=fmt,
+            data=data,
+            date=datetime.datetime.now(),
+            threshold=self.validated_data['threshold'])
         lines = data.splitlines()
-        fmt = self.cleaned_data['data_format']
         if fmt == 'enter':
             sequences = lines
         else:

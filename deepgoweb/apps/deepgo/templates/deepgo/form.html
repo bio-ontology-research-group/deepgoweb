@@ -6,8 +6,18 @@
 <div class="row">
   <div class="col-md-12">
     <h1>DeepGO Protein Function prediction.</h1> <br/>
-    <p>DeepGO is a novel method for predicting protein functions using protein sequences. It uses deep neural networks to learn sequence features and hierarchically classifies it with GO classes.</p>
-    <p>We also have a method which incorporates protein-protein interaction networks and performs significantly better than sequence model. The source code of the model is available on <a href="https://github.com/bio-ontology-research-group/deepgo">GitHub repository</a></p>
+    <p>DeepGO is a novel method for predicting protein functions using
+      protein sequences and protein-protein interaction (PPI) networks.
+      It uses deep neural networks to learn sequence features and PPI
+      embeddings learned with knowledge graph representation learning
+      method and hierarchically classifies proteins with GO classes.
+    </p>
+    <p>The tool only needs protein sequence as an input. It takes network
+    embeddings of the most similar sequence in our database found
+    using BLAST search. The source code of the model is available on
+      <a href="https://github.com/bio-ontology-research-group/deepgo">
+	GitHub repository</a>
+    </p>
     <br/>
   </div>
 </div>

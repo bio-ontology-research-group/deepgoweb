@@ -24,5 +24,6 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^accounts/', include('accounts.urls')),
     url(r'^deepgo/', include('deepgo.urls')),
+    url(r'^deepgo/api/', include('deepgo.rest_urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

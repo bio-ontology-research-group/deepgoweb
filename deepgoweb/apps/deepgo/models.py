@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import User
 from deepgo.utils import go
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class PredictionGroup(models.Model):
@@ -18,6 +19,9 @@ class PredictionGroup(models.Model):
         default='fasta')
     user = models.ForeignKey(User, related_name='prediction_groups', null=True)
     date = models.DateTimeField()
+    threshold = models.FloatField(
+        default=0.3,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
 
 
 class Prediction(models.Model):
