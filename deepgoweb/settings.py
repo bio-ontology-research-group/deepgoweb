@@ -37,6 +37,8 @@ class BaseConfiguration(Configuration):
 
     ALLOWED_HOSTS = ['*']
 
+    ADMINS = [('Maxat Kulmanov', 'coolmaksat@gmail.com'), ]
+
     # Application definition
 
     INSTALLED_APPS = [
