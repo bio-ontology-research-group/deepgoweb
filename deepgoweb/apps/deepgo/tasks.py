@@ -17,11 +17,6 @@ def get_data(sequences):
     n = len(sequences)
     data = np.zeros((n, 1000), dtype=np.float32)
     embeds = np.zeros((n, 256), dtype=np.float32)
-
-    # hashes = list()
-    # for seq in sequences:
-    #     hashes.append(md5.md5(seq).hexdigest())
-    # prots = Protein.objects.filter(sequence_md5__in=hashes)
     
     p = Popen(['blastp', '-db', 'data/embeddings.fa',
                '-max_target_seqs', '1', '-num_threads', '128',
@@ -36,9 +31,15 @@ def get_data(sequences):
             it = line.strip().split('\t')
             prot_ids[it[1]] = int(it[0])
     prots = embed_df[embed_df['accessions'].isin(prot_ids.keys())]
+
+    embeds_dict = {}
     for i, row in prots.iterrows():
-        embeds[prot_ids[row['accessions']], :] = row['embeddings']
-        
+        embeds_dict[row['accessions']] = row['embeddings']
+
+    for i, prot_id in prot_ids.iteritems():
+        embeds[i, :] = embeds_dict[prot_id]
+    
+    
     for i in xrange(len(sequences)):
         seq = sequences[i]
         for j in xrange(len(seq) - gram_len + 1):
