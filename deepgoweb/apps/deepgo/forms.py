@@ -8,9 +8,22 @@ from deepgo.utils import (
 from deepgo.constants import MAXLEN
 
 
+def filter_funcs(funcs):
+    func_dict = dict()
+    functions = list()
+    scores = list()
+    for func in funcs:
+        pref, function, score = func.split('_')
+        func_dict[function] = (pref, float(score))
+    for go_id in filter_specific(func_dict.keys()):
+        functions.append(func_dict[go_id][0] + '_' + go_id)
+        scores.append(func_dict[go_id][1])
+    return functions, scores
+
 class PredictionForm(forms.ModelForm):
 
     threshold = forms.FloatField(
+        initial=0.3,
         min_value=0.0, max_value=1.0,
         widget=forms.NumberInput(attrs={'step':0.1}))
 
@@ -56,7 +69,7 @@ class PredictionForm(forms.ModelForm):
         for i in xrange(n):
             sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(
-            sequences, threshold=self.instance.threshold)
+            sequences)
         preds = preds.get()
         cc = preds[0: n]
         mf = preds[n: n + n]
@@ -68,7 +81,9 @@ class PredictionForm(forms.ModelForm):
                 pred = Prediction(sequence=sequences[i])
             else:
                 pred = Prediction(protein_info=info[i], sequence=sequences[i])
-            pred.functions = filter_specific(cc[i] + mf[i] + bp[i])
+            functions, scores = filter_funcs(cc[i] + mf[i] + bp[i])
+            pred.functions = functions
+            pred.scores = scores
             pred.group = self.instance
             predictions.append(pred)
         Prediction.objects.bulk_create(predictions)

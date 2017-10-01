@@ -29,8 +29,8 @@ def get_data(sequences):
     if p.wait() == 0:
         for line in p.stdout:
             it = line.strip().split('\t')
-            prot_ids[it[1]] = int(it[0])
-    prots = embed_df[embed_df['accessions'].isin(prot_ids.keys())]
+            prot_ids[int(it[0])] = it[1]
+    prots = embed_df[embed_df['accessions'].isin(set(prot_ids.values()))]
 
     embeds_dict = {}
     for i, row in prots.iterrows():
@@ -47,7 +47,7 @@ def get_data(sequences):
     return [data, embeds]
 
 
-def predict(data, model, functions, threshold):
+def predict(data, model, functions, func):
     batch_size = 1
     n = data[0].shape[0]
     result = list()
@@ -55,11 +55,13 @@ def predict(data, model, functions, threshold):
         result.append(list())
     predictions = model.predict(
         data, batch_size=batch_size)
+    predictions = predictions.round(3)
     for i in xrange(n):
-        pred = (predictions[i] >= threshold).astype('int32')
+        pred = (predictions[i] > 0).astype('int32')
         for j in xrange(len(functions)):
             if pred[j] == 1:
-                result[i].append(functions[j])
+                result[i].append(
+                    func + '_' + functions[j] + '_' + str(predictions[i, j]))
     return result
 
 
@@ -77,7 +79,6 @@ def init_models(conf=None, **kwargs):
         gram_len = len(ngram_df['ngrams'][0])
     print('Gram length:', gram_len)
     print('Vocabulary size:', len(vocab))
-    threshold = 0.3
     sequences = ['MKKVLVINGPNLNLLGIREKNIYGSVSYEDVLKSISRKAQELGFEVEFFQSNHEGEIIDKIHRAYFEKVDAIIINPGAYTHYSYAIHDAIKAVNIPTIEVHISNIHAREEFRHKSVIAPACTGQISGFGIKSYIIALYALKEILD']
     data = get_data(sequences)
     for onto in funcs:
@@ -86,12 +87,12 @@ def init_models(conf=None, **kwargs):
         functions = df['functions']
         models.append((model, functions))
         print 'Model %s initialized. Running first predictions' % onto
-        result = predict(data, model, functions, threshold)
+        result = predict(data, model, functions, onto)
         print result
 
 
 @task
-def predict_functions(sequences, threshold=0.3):
+def predict_functions(sequences):
     if not models:
         init_models()
     data = get_data(sequences)
@@ -99,5 +100,5 @@ def predict_functions(sequences, threshold=0.3):
     for i in range(len(models)):
         model, functions = models[i]
         print 'Running predictions for model %s' % funcs[i]
-        result += predict(data, model, functions, threshold)
+        result += predict(data, model, functions, funcs[i])
     return result

@@ -9,9 +9,21 @@
     </div>
     <div class="col-md-6">
       <ul class="list">
-      {% for function in pred.function_names %}
-        <li>{{ function.0 }} - {{ function.1 }}</li>
-      {% endfor %}
+	{% if pred.scores %}
+	{% for ont in pred.get_functions %}
+	<li> {{ ont.name }}
+	  <ul class="list">
+	    {% for func in ont.functions %}
+	    <li> {{ func.0 }} - {{ func.1 }} - {{ func.2 }}</li>
+	    {% endfor %}
+	  </ul>
+	</li>
+	{% endfor %}
+	{% else %}
+	  {% for function in pred.function_names %}
+            <li>{{ function.0 }} - {{ function.1 }}</li>
+	  {% endfor %}
+	{% endif %}
       </ul>
     </div>
   </div>

@@ -152,9 +152,7 @@ go = get_gene_ontology()
 
 
 def filter_specific(gos):
-    go_set = set()
-    for go_id in gos:
-        go_set.add(go_id)
+    go_set = set(gos)
     for go_id in gos:
         anchestors = get_anchestors(go, go_id)
         anchestors.discard(go_id)

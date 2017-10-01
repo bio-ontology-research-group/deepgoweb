@@ -28,4 +28,5 @@ class PredictionDetailView(DetailView):
     def get_context_data(self, *args, **kwargs):
         context = super(PredictionDetailView, self).get_context_data(
             *args, **kwargs)
+        pg = context['object']
         return context
