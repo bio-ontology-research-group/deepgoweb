@@ -8,18 +8,6 @@ from deepgo.utils import (
 from deepgo.constants import MAXLEN
 
 
-def filter_funcs(funcs):
-    func_dict = dict()
-    functions = list()
-    scores = list()
-    for func in funcs:
-        pref, function, score = func.split('_')
-        func_dict[function] = (pref, float(score))
-    for go_id in filter_specific(func_dict.keys()):
-        functions.append(func_dict[go_id][0] + '_' + go_id)
-        scores.append(func_dict[go_id][1])
-    return functions, scores
-
 class PredictionForm(forms.ModelForm):
 
     threshold = forms.FloatField(
@@ -81,7 +69,13 @@ class PredictionForm(forms.ModelForm):
                 pred = Prediction(sequence=sequences[i])
             else:
                 pred = Prediction(protein_info=info[i], sequence=sequences[i])
-            functions, scores = filter_funcs(cc[i] + mf[i] + bp[i])
+            funcs = cc[i] + mf[i] + bp[i]
+            functions = list()
+            scores = list()
+            for func in funcs:
+                pref, go_id, score = func.split('_')
+                functions.append(pref + '_' + go_id)
+                scores.append(float(score))
             pred.functions = functions
             pred.scores = scores
             pred.group = self.instance

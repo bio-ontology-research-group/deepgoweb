@@ -11,7 +11,7 @@ class PredictionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Prediction
-        fields = ['sequence', 'functions']
+        fields = ['sequence', 'functions', 'scores']
 
         
 class PredictionGroupSerializer(serializers.ModelSerializer):
@@ -23,8 +23,6 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         fields = ['id', 'data_format', 'data', 'threshold', 'predictions']
         extra_kwargs = {
             'data': {'write_only': True}}
-        
-
 
     def validate(self, data):
         fmt = data['data_format']
@@ -64,7 +62,7 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         for i in xrange(n):
             sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(
-            sequences, threshold=self.instance.threshold)
+            sequences)
         preds = preds.get()
         cc = preds[0: n]
         mf = preds[n: n + n]
@@ -76,7 +74,15 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
                 pred = Prediction(sequence=sequences[i])
             else:
                 pred = Prediction(protein_info=info[i], sequence=sequences[i])
-            pred.functions = filter_specific(cc[i] + mf[i] + bp[i])
+            funcs = cc[i] + mf[i] + bp[i]
+            functions = list()
+            scores = list()
+            for func in funcs:
+                pref, go_id, score = func.split('_')
+                functions.append(pref + '_' + go_id)
+                scores.append(float(score))
+            pred.functions = functions
+            pred.scores = scores
             pred.group = self.instance
             predictions.append(pred)
         Prediction.objects.bulk_create(predictions)
