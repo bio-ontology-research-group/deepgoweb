@@ -34,6 +34,9 @@ class PredictionForm(forms.ModelForm):
             seqs = lines
         else:
             info, seqs = read_fasta(lines)
+        if len(seqs) > 10:
+            raise ValidationError(
+                'Number of sequences should not be more than 10!')
         for seq in seqs:
             seq = seq.strip()
             if len(seq) > MAXLEN:
