@@ -1,6 +1,5 @@
 venv/
 *.pyc
-deepgoweb/static/bower
 deepgoweb/media
 deepgoweb/public
 models/
