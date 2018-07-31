@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.conf.urls.static import static
 from views import HomePageView
 from django.conf import settings
+from django.views.generic import TemplateView
 
 urlpatterns = [
     url(r'^$', HomePageView.as_view(), name='home'),
@@ -25,6 +26,6 @@ urlpatterns = [
     url(r'^accounts/', include('accounts.urls')),
     url(r'^deepgo/', include('deepgo.urls')),
     url(r'^deepgo/api/', include('deepgo.rest_urls')),
-    url(r'^ht/', include('health_check.urls')),
+    url(r'^health', TemplateView.as_view(template_name="health.html")),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
