@@ -56,6 +56,7 @@ class BaseConfiguration(Configuration):
         'deepgo',
         'widget_tweaks',
         'rest_framework',
+        'health_check',
     ]
 
     MIDDLEWARE_CLASSES = [

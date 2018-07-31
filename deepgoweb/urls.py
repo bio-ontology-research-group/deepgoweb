@@ -25,5 +25,6 @@ urlpatterns = [
     url(r'^accounts/', include('accounts.urls')),
     url(r'^deepgo/', include('deepgo.urls')),
     url(r'^deepgo/api/', include('deepgo.rest_urls')),
+    url(r'^ht/', include('health_check.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
