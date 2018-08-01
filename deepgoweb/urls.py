@@ -26,6 +26,6 @@ urlpatterns = [
     url(r'^accounts/', include('accounts.urls')),
     url(r'^deepgo/', include('deepgo.urls')),
     url(r'^deepgo/api/', include('deepgo.rest_urls')),
-    url(r'^health', TemplateView.as_view(template_name="health.html")),
+    url(r'^healthcheck', TemplateView.as_view(template_name="health.html")),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
