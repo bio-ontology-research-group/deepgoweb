@@ -18,9 +18,10 @@ def get_data(sequences):
     data = np.zeros((n, 1000), dtype=np.float32)
     embeds = np.zeros((n, 256), dtype=np.float32)
     
-    p = Popen(['blastp', '-db', 'data/embeddings.fa',
-               '-max_target_seqs', '1', '-num_threads', '128',
-               '-outfmt', '6 qseqid sseqid'], stdin=PIPE, stdout=PIPE)
+    p = Popen(['diamond', 'blastp', '-d', 'data/embeddings',
+               '--max-target-seqs', '1',
+               '--outfmt', '6', 'qseqid', 'sseqid'], stdin=PIPE, stdout=PIPE)
+    
     for i in xrange(n):
         p.stdin.write('>' + str(i) + '\n' + sequences[i] + '\n')
     p.stdin.close()
