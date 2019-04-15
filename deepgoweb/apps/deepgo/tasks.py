@@ -2,104 +2,134 @@ from celery import task
 
 import numpy as np
 import pandas as pd
-from keras.models import load_model
-from deepgo.constants import MAXLEN
+from tensorflow.keras.models import load_model
+from deepgo.aminoacids import MAXLEN, to_onehot
 from deepgo.models import Protein
+from deepgo.utils import Ontology
 import tensorflow as tf
-import md5
 from subprocess import Popen, PIPE
 
-models = list()
-funcs = ['cc', 'mf', 'bp']
-
-
-def get_data(sequences):
-    n = len(sequences)
-    data = np.zeros((n, 1000), dtype=np.float32)
-    embeds = np.zeros((n, 256), dtype=np.float32)
-    
-    p = Popen(['diamond', 'blastp', '-d', 'data/embeddings',
-               '--max-target-seqs', '1',
-               '--outfmt', '6', 'qseqid', 'sseqid'], stdin=PIPE, stdout=PIPE)
-    
-    for i in xrange(n):
-        p.stdin.write('>' + str(i) + '\n' + sequences[i] + '\n')
-    p.stdin.close()
-
-    prot_ids = {}
-    if p.wait() == 0:
-        for line in p.stdout:
-            it = line.strip().split('\t')
-            prot_ids[int(it[0])] = it[1]
-    prots = embed_df[embed_df['accessions'].isin(set(prot_ids.values()))]
-
-    embeds_dict = {}
-    for i, row in prots.iterrows():
-        embeds_dict[row['accessions']] = row['embeddings']
-
-    for i, prot_id in prot_ids.iteritems():
-        embeds[i, :] = embeds_dict[prot_id]
-    
-    
-    for i in xrange(len(sequences)):
-        seq = sequences[i]
-        for j in xrange(len(seq) - gram_len + 1):
-            data[i, j] = vocab[seq[j: (j + gram_len)]]
-    return [data, embeds]
-
-
-def predict(data, model, functions, func):
-    batch_size = 1
-    n = data[0].shape[0]
-    result = list()
-    for i in xrange(n):
-        result.append(list())
-    predictions = model.predict(
-        data, batch_size=batch_size)
-    predictions = predictions.round(3)
-    for i in xrange(n):
-        pred = (predictions[i] > 0).astype('int32')
-        for j in xrange(len(functions)):
-            if pred[j] == 1:
-                result[i].append(
-                    func + '_' + functions[j] + '_' + str(predictions[i, j]))
-    return result
-
-
-def init_models(conf=None, **kwargs):
-    print('Init')
-    global models
-    ngram_df = pd.read_pickle('data/models/ngrams.pkl')
-    global embed_df
-    embed_df = pd.read_pickle('data/graph_new_embeddings.pkl')
-    global vocab
-    vocab = {}
-    global gram_len
-    for key, gram in enumerate(ngram_df['ngrams']):
-        vocab[gram] = key + 1
-        gram_len = len(ngram_df['ngrams'][0])
-    print('Gram length:', gram_len)
-    print('Vocabulary size:', len(vocab))
-    sequences = ['MKKVLVINGPNLNLLGIREKNIYGSVSYEDVLKSISRKAQELGFEVEFFQSNHEGEIIDKIHRAYFEKVDAIIINPGAYTHYSYAIHDAIKAVNIPTIEVHISNIHAREEFRHKSVIAPACTGQISGFGIKSYIIALYALKEILD']
-    data = get_data(sequences)
-    for onto in funcs:
-        model = load_model('data/models/model_%s.h5' % onto)
-        df = pd.read_pickle('data/models/%s.pkl' % onto)
-        functions = df['functions']
-        models.append((model, functions))
-        print 'Model %s initialized. Running first predictions' % onto
-        result = predict(data, model, functions, onto)
-        print result
-
+go = None
+annotations = None
+model = None
+terms = None
 
 @task
 def predict_functions(sequences):
-    if not models:
-        init_models()
-    data = get_data(sequences)
-    result = list()
-    for i in range(len(models)):
-        model, functions = models[i]
-        print 'Running predictions for model %s' % funcs[i]
-        result += predict(data, model, functions, funcs[i])
-    return result
+    global annotations
+    global model
+    global terms
+    global go
+    # Load GO and read list of all terms
+    if go is None:
+        go = Ontology('data/go.obo', with_rels=True)
+        terms_df = pd.read_pickle('data/terms.pkl')
+        terms = terms_df['terms'].values.flatten()
+
+        # Read known experimental annotations
+        annotations = {}
+        df = pd.read_pickle('data/train_data.pkl')
+        for row in df.itertuples():
+            annotations[row.proteins] = set(row.annotations)
+
+        # Load CNN model
+        model = load_model('data/model.h5')
+
+    
+    p = Popen(['diamond', 'blastp', '-d', 'data/train_data',
+               '--outfmt', '6', 'qseqid', 'sseqid', 'bitscore'], stdin=PIPE, stdout=PIPE)
+    
+    for i in range(len(sequences)):
+        p.stdin.write(bytes('>' + str(i) + '\n' + sequences[i] + '\n', encoding='utf8'))
+    p.stdin.close()
+
+    diamond_preds = {}
+    mapping = {}
+    if p.wait() == 0:
+        for line in p.stdout:
+            it = line.decode('utf8').strip().split()
+            prot_id = int(it[0])
+            if prot_id not in mapping:
+                mapping[prot_id] = {}
+            mapping[prot_id][it[1]] = float(it[2])
+    for prot_id, sim_prots in mapping.items():
+        annots = {}
+        allgos = set()
+        total_score = 0.0
+        for p_id, score in sim_prots.items():
+            allgos |= annotations[p_id]
+            total_score += score
+        allgos = list(sorted(allgos))
+        sim = np.zeros(len(allgos), dtype=np.float32)
+        for j, go_id in enumerate(allgos):
+            s = 0.0
+            for p_id, score in sim_prots.items():
+                if go_id in annotations[p_id]:
+                    s += score
+            sim[j] = s / total_score
+        for go_id, score in zip(allgos, sim):
+            annots[go_id] = score
+        diamond_preds[prot_id] = annots
+    
+    
+    results = []
+    deep_preds = {}
+    ids, data = get_data(sequences)
+    batch_size = 32
+    alpha = 0.5
+    preds = model.predict(data, batch_size=batch_size)
+    assert preds.shape[1] == len(terms)
+    for i, prot_id in enumerate(ids):
+        if prot_id not in deep_preds:
+            deep_preds[prot_id] = {}
+        for l in range(len(terms)):
+            if preds[i, l] >= 0.01: # Filter out very low scores
+                if terms[l] not in deep_preds[prot_id]:
+                    deep_preds[prot_id][terms[l]] = preds[i, l]
+                else:
+                    deep_preds[prot_id][terms[l]] = max(
+                        deep_preds[prot_id][terms[l]], preds[i, l])
+    # Combine diamond preds and deepgo
+    for prot_id in range(len(sequences)):
+        annots = {}
+        if prot_id in diamond_preds:
+            for go_id, score in diamond_preds[prot_id].items():
+                annots[go_id] = score * alpha
+        for go_id, score in deep_preds[prot_id].items():
+            if go_id in annots:
+                annots[go_id] += (1 - alpha) * score
+            else:
+                annots[go_id] = (1 - alpha) * score
+        # Propagate scores with ontology structure
+        gos = list(annots.keys())
+        for go_id in gos:
+            for g_id in go.get_anchestors(go_id):
+                if g_id in annots:
+                    annots[g_id] = max(annots[g_id], annots[go_id])
+                else:
+                    annots[g_id] = annots[go_id]
+
+        results.append(annots)
+        
+    return results
+
+def get_data(sequences):
+    pred_seqs = []
+    ids = []
+    for i, seq in enumerate(sequences):
+        if len(seq) > MAXLEN:
+            st = 0
+            while st < len(seq):
+                pred_seqs.append(seq[st: st + MAXLEN])
+                ids.append(i)
+                st += MAXLEN - 128
+        else:
+            pred_seqs.append(seq)
+            ids.append(i)
+    n = len(pred_seqs)
+    data = np.zeros((n, MAXLEN, 21), dtype=np.float32)
+    
+    for i in range(n):
+        seq = pred_seqs[i]
+        data[i, :, :] = to_onehot(seq)
+    return ids, data

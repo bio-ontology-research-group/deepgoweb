@@ -1,8 +1,8 @@
 from deepgo.models import Prediction, PredictionGroup
 from rest_framework import serializers
 from deepgo.utils import (
-    is_ok, read_fasta, filter_specific)
-from deepgo.constants import MAXLEN
+    read_fasta)
+from deepgo.aminoacids import is_ok, MAXLEN
 import datetime
 from deepgo.tasks import predict_functions
 
@@ -35,14 +35,11 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
             seqs = lines
         else:
             info, seqs = read_fasta(lines)
-        if len(seqs) > 10:
+        if len(seqs) > 1000:
             raise serializers.ValidationError(
-                'Number of sequences should not be more than 10!')
+                'Number of sequences should not be more than 1000!')
         for seq in seqs:
             seq = seq.strip()
-            if len(seq) > MAXLEN:
-                raise serializers.ValidationError(
-                    'Sequence length should not be more than 1002!')
             if not is_ok(seq):
                 raise serializers.ValidationError(
                     'Sequence contains invalid amino acids!')
@@ -67,9 +64,6 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         preds = predict_functions.delay(
             sequences)
         preds = preds.get()
-        cc = preds[0: n]
-        mf = preds[n: n + n]
-        bp = preds[2 * n: 3 * n]
         self.instance.save()
         predictions = list()
         for i in range(n):
@@ -77,12 +71,11 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
                 pred = Prediction(sequence=sequences[i])
             else:
                 pred = Prediction(protein_info=info[i], sequence=sequences[i])
-            funcs = cc[i] + mf[i] + bp[i]
+            funcs = preds[i]
             functions = list()
             scores = list()
-            for func in funcs:
-                pref, go_id, score = func.split('_')
-                functions.append(pref + '_' + go_id)
+            for go_id, score in funcs.items():
+                functions.append(go_id)
                 scores.append(float(score))
             pred.functions = functions
             pred.scores = scores

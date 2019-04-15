@@ -17,7 +17,9 @@ class PredictionGroup(models.Model):
         max_length=10,
         choices=DATA_FORMAT_CHOICES,
         default='fasta')
-    user = models.ForeignKey(User, related_name='prediction_groups', null=True)
+    user = models.ForeignKey(
+        User, related_name='prediction_groups', null=True,
+        on_delete=models.SET_NULL)
     date = models.DateTimeField()
     threshold = models.FloatField(
         default=0.3,
@@ -31,35 +33,39 @@ class Prediction(models.Model):
         models.CharField(max_length=15), blank=True, null=True)
     scores = ArrayField(models.FloatField(default=0.0), blank=True, null=True)
     group = models.ForeignKey(
-        PredictionGroup, related_name='predictions', null=True)
+        PredictionGroup, related_name='predictions', null=True,
+        on_delete=models.SET_NULL)
 
     def function_names(self):
         if self.scores is None:
             for func in self.functions:
-                if func in go:
-                    yield (func, go[func]['name'])
+                if go.has_term(func):
+                    yield (func, go.get(func)['name'])
                 else:
                     yield (func, '')
     
     def get_functions(self):
-        res = {'cc': list(), 'mf': list(), 'bp': list()}
-        for i in xrange(len(self.functions)):
+        res = {
+            'cellular_component': [],
+            'molecular_function': [], 'biological_process': []}
+        for i in range(len(self.functions)):
             if self.scores[i] < self.group.threshold:
                 continue
-            func = self.functions[i].split('_')
-            if len(func) == 2:
-                name = ''
-                if func[1] in go:
-                    name = go[func[1]]['name']
-                res[func[0]].append(
-                    (func[1], name, self.scores[i]))
-        res['cc'] = sorted(res['cc'], key=lambda x: x[2], reverse=True)
-        res['mf'] = sorted(res['mf'], key=lambda x: x[2], reverse=True)
-        res['bp'] = sorted(res['bp'], key=lambda x: x[2], reverse=True)
+            func = self.functions[i]
+            if go.has_term(func):
+                name = go.get(func)['name']
+                res[go.get(func)['namespace']].append(
+                    (func, name, self.scores[i]))
+        res['cellular_component'] = sorted(
+            res['cellular_component'], key=lambda x: x[2], reverse=True)
+        res['molecular_function'] = sorted(
+            res['molecular_function'], key=lambda x: x[2], reverse=True)
+        res['biological_process'] = sorted(
+            res['biological_process'], key=lambda x: x[2], reverse=True)
         ret = []
-        ret.append({'name': 'Cellular Component', 'functions': res['cc']})
-        ret.append({'name': 'Molecular Function', 'functions': res['mf']})
-        ret.append({'name': 'Biological Process', 'functions': res['bp']})
+        ret.append({'name': 'Cellular Component', 'functions': res['cellular_component']})
+        ret.append({'name': 'Molecular Function', 'functions': res['molecular_function']})
+        ret.append({'name': 'Biological Process', 'functions': res['biological_process']})
         return ret
 
                 
