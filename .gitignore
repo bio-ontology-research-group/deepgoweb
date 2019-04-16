@@ -4,3 +4,4 @@ deepgoweb/media
 deepgoweb/public
 models/
 data/
+data-*/

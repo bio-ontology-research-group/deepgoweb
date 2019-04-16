@@ -14,7 +14,7 @@
 	<li> {{ ont.name }}
 	  <ul class="list">
 	    {% for func in ont.functions %}
-	    <li> {{ func.0 }} - {{ func.1 }} - {{ func.2 }}</li>
+	    <li> {{ func.0 }} - {{ func.1 }} - {{ func.2|floatformat:3 }}</li>
 	    {% endfor %}
 	  </ul>
 	</li>

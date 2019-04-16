@@ -1,164 +1,151 @@
-from collections import deque
+from collections import deque, Counter
 import pandas as pd
-from keras import backend as K
-from constants import (
+import numpy as np
+import math
+from deepgo.constants import (
     BIOLOGICAL_PROCESS,
     MOLECULAR_FUNCTION,
     CELLULAR_COMPONENT,
-    MAXLEN,
-    AACIDS)
+    FUNC_DICT,
+    NAMESPACES)
 
+class Ontology(object):
 
-def is_ok(seq):
-    if len(seq) > MAXLEN:
-        return False
-    for c in seq:
-        if c not in AACIDS:
-            return False
-    return True
+    def __init__(self, filename='data/go.obo', with_rels=True):
+        self.ont = self.load(filename, with_rels)
+        self.ic = None
 
+    def has_term(self, term_id):
+        return term_id in self.ont
 
-def get_gene_ontology(filename='go.obo'):
-    # Reading Gene Ontology from OBO Formatted file
-    go = dict()
-    obj = None
-    with open('data/' + filename, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if line == '[Term]':
-                if obj is not None:
-                    go[obj['id']] = obj
-                obj = dict()
-                obj['is_a'] = list()
-                obj['part_of'] = list()
-                obj['regulates'] = list()
-                obj['is_obsolete'] = False
-                continue
-            elif line == '[Typedef]':
-                obj = None
+    def calculate_ic(self, annots):
+        cnt = Counter()
+        for x in annots:
+            cnt.update(x)
+        self.ic = {}
+        for go_id, n in cnt.items():
+            parents = self.get_parents(go_id)
+            if len(parents) == 0:
+                min_n = n
             else:
-                if obj is None:
+                min_n = min([cnt[x] for x in parents])
+            self.ic[go_id] = math.log(min_n / n, 2)
+    
+    def get_ic(self, go_id):
+        if self.ic is None:
+            raise Exception('Not yet calculated')
+        if go_id not in self.ic:
+            return 0.0
+        return self.ic[go_id]
+
+    def get(self, term_id):
+        return self.ont[term_id]
+
+
+    def load(self, filename, with_rels):
+        ont = dict()
+        obj = None
+        with open(filename, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
                     continue
-                l = line.split(": ")
-                if l[0] == 'id':
-                    obj['id'] = l[1]
-                elif l[0] == 'is_a':
-                    obj['is_a'].append(l[1].split(' ! ')[0])
-                elif l[0] == 'is_obsolete' and l[1] == 'true':
-                    obj['is_obsolete'] = True
-                elif l[0] == 'name':
-                    obj['name'] = l[1]
-    if obj is not None:
-        go[obj['id']] = obj
-    for go_id in go.keys():
-        if go[go_id]['is_obsolete']:
-            del go[go_id]
-    for go_id, val in go.iteritems():
-        if 'children' not in val:
-            val['children'] = set()
-        for g_id in val['is_a']:
-            if g_id in go:
-                if 'children' not in go[g_id]:
-                    go[g_id]['children'] = set()
-                go[g_id]['children'].add(go_id)
-    # Rooting
-    go['root'] = dict()
-    go['root']['is_a'] = []
-    go['root']['children'] = [
-        BIOLOGICAL_PROCESS, MOLECULAR_FUNCTION, CELLULAR_COMPONENT]
-    go[BIOLOGICAL_PROCESS]['is_a'] = ['root']
-    go[MOLECULAR_FUNCTION]['is_a'] = ['root']
-    go[CELLULAR_COMPONENT]['is_a'] = ['root']
-
-    return go
-
-
-def get_anchestors(go, go_id):
-    go_set = set()
-    q = deque()
-    q.append(go_id)
-    while(len(q) > 0):
-        g_id = q.popleft()
-        go_set.add(g_id)
-        for parent_id in go[g_id]['is_a']:
-            if parent_id in go:
-                q.append(parent_id)
-    return go_set
-
-
-def get_parents(go, go_id):
-    go_set = set()
-    for parent_id in go[go_id]['is_a']:
-        if parent_id in go:
-            go_set.add(parent_id)
-    return go_set
+                if line == '[Term]':
+                    if obj is not None:
+                        ont[obj['id']] = obj
+                    obj = dict()
+                    obj['is_a'] = list()
+                    obj['part_of'] = list()
+                    obj['regulates'] = list()
+                    obj['alt_ids'] = list()
+                    obj['is_obsolete'] = False
+                    continue
+                elif line == '[Typedef]':
+                    obj = None
+                else:
+                    if obj is None:
+                        continue
+                    l = line.split(": ")
+                    if l[0] == 'id':
+                        obj['id'] = l[1]
+                    elif l[0] == 'alt_id':
+                        obj['alt_ids'].append(l[1])
+                    elif l[0] == 'namespace':
+                        obj['namespace'] = l[1]
+                    elif l[0] == 'is_a':
+                        obj['is_a'].append(l[1].split(' ! ')[0])
+                    elif with_rels and l[0] == 'relationship':
+                        it = l[1].split()
+                        # add all types of relationships
+                        obj['is_a'].append(it[1])
+                    elif l[0] == 'name':
+                        obj['name'] = l[1]
+                    elif l[0] == 'is_obsolete' and l[1] == 'true':
+                        obj['is_obsolete'] = True
+        if obj is not None:
+            ont[obj['id']] = obj
+        for term_id in list(ont.keys()):
+            for t_id in ont[term_id]['alt_ids']:
+                ont[t_id] = ont[term_id]
+            if ont[term_id]['is_obsolete']:
+                del ont[term_id]
+        for term_id, val in ont.items():
+            if 'children' not in val:
+                val['children'] = set()
+            for p_id in val['is_a']:
+                if p_id in ont:
+                    if 'children' not in ont[p_id]:
+                        ont[p_id]['children'] = set()
+                    ont[p_id]['children'].add(term_id)
+        return ont
 
 
-def get_go_set(go, go_id):
-    go_set = set()
-    q = deque()
-    q.append(go_id)
-    while len(q) > 0:
-        g_id = q.popleft()
-        go_set.add(g_id)
-        for ch_id in go[g_id]['children']:
-            q.append(ch_id)
-    return go_set
+    def get_anchestors(self, term_id):
+        if term_id not in self.ont:
+            return set()
+        term_set = set()
+        q = deque()
+        q.append(term_id)
+        while(len(q) > 0):
+            t_id = q.popleft()
+            if t_id not in term_set:
+                term_set.add(t_id)
+                for parent_id in self.ont[t_id]['is_a']:
+                    if parent_id in self.ont:
+                        q.append(parent_id)
+        return term_set
 
 
-def load_model_weights(model, filepath):
-    ''' Name-based weight loading
-    Layers that have no matching name are skipped.
-    '''
-    if hasattr(model, 'flattened_layers'):
-        # Support for legacy Sequential/Merge behavior.
-        flattened_layers = model.flattened_layers
-    else:
-        flattened_layers = model.layers
-
-    df = pd.read_pickle(filepath)
-
-    # Reverse index of layer name to list of layers with name.
-    index = {}
-    for layer in flattened_layers:
-        if layer.name:
-            index[layer.name] = layer
-
-    # We batch weight value assignments in a single backend call
-    # which provides a speedup in TensorFlow.
-    weight_value_tuples = []
-    for row in df.iterrows():
-        row = row[1]
-        name = row['layer_names']
-        weight_values = row['weight_values']
-        if name in index:
-            symbolic_weights = index[name].weights
-            if len(weight_values) != len(symbolic_weights):
-                raise Exception('Layer named "' + layer.name +
-                                '") expects ' + str(len(symbolic_weights)) +
-                                ' weight(s), but the saved weights' +
-                                ' have ' + str(len(weight_values)) +
-                                ' element(s).')
-            # Set values.
-            for i in range(len(weight_values)):
-                weight_value_tuples.append(
-                    (symbolic_weights[i], weight_values[i]))
-    K.batch_set_value(weight_value_tuples)
+    def get_parents(self, term_id):
+        if term_id not in self.ont:
+            return set()
+        term_set = set()
+        for parent_id in self.ont[term_id]['is_a']:
+            if parent_id in self.ont:
+                term_set.add(parent_id)
+        return term_set
 
 
-go = get_gene_ontology()
-
-
-def filter_specific(gos):
-    go_set = set(gos)
-    for go_id in gos:
-        anchestors = get_anchestors(go, go_id)
-        anchestors.discard(go_id)
-        go_set -= anchestors
-    return list(go_set)
-
+    def get_namespace_terms(self, namespace):
+        terms = set()
+        for go_id, obj in self.ont.items():
+            if obj['namespace'] == namespace:
+                terms.add(go_id)
+        return terms
+    
+    def get_term_set(self, term_id):
+        if term_id not in self.ont:
+            return set()
+        term_set = set()
+        q = deque()
+        q.append(term_id)
+        while len(q) > 0:
+            t_id = q.popleft()
+            if t_id not in term_set:
+                term_set.add(t_id)
+                for ch_id in self.ont[t_id]['children']:
+                    q.append(ch_id)
+        return term_set
 
 def read_fasta(lines):
     seqs = list()
@@ -178,3 +165,5 @@ def read_fasta(lines):
     seqs.append(seq)
     info.append(inf)
     return info, seqs
+
+go = Ontology()

@@ -22,7 +22,8 @@ pre_save.connect(check_unique_email, sender=User)
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, primary_key=True)
+    user = models.OneToOneField(
+        User, primary_key=True, on_delete=models.CASCADE)
     birth_date = models.DateField(null=True)
     gender = models.IntegerField(choices=GENDER_CHOICES, default=0)
 

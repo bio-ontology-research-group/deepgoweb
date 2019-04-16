@@ -5,17 +5,16 @@
 
 <div class="row">
   <div class="col-md-12">
-    <h1>DeepGO Protein Function prediction.</h1> <br/>
-    <p>DeepGO is a novel method for predicting protein functions using
-      protein sequences and protein-protein interaction (PPI) networks.
-      It uses deep neural networks to learn sequence features and PPI
-      embeddings learned with knowledge graph representation learning
-      method and hierarchically classifies proteins with GO classes.
+    <h1>DeepGOPlus Protein Function prediction.</h1> <br/>
+    <p>DeepGOPlus is a novel method for predicting protein functions
+      based on  protein sequence.
+      It uses deep convolutional neural networks to learn sequence
+      features and combines predictions with sequence similarity
+      based predictions.
     </p>
-    <p>The tool only needs protein sequence as an input. It takes network
-    embeddings of the most similar sequence in our database found
-    using BLAST search. The source code of the model is available on
-      <a href="https://github.com/bio-ontology-research-group/deepgo">
+    <p>The tool only needs protein sequence as an input. The source
+      code of the model is available on
+      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
 	GitHub repository</a>
     </p>
     <p>The <a href="{% url "api-predictions-create" %}">REST API</a> is
@@ -23,7 +22,12 @@
     </p>
     <br/>
     <p style='color:red;'>
-      The number of sequences in one query should not exceed 10!</p>
+      The number of sequences in one query should not exceed 1000!</p>
+    <p> Our previous function predictor
+      <a href="https://github.com/bio-ontology-research-group/deepgo">
+	DeepGO</a>
+      is available for running from command line.
+    </p>
   </div>
 </div>
 <div class="row">
