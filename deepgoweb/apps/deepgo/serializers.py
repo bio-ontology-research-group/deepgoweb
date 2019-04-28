@@ -59,7 +59,7 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         else:
             info, sequences = read_fasta(lines)
         n = len(sequences)
-        for i in xrange(n):
+        for i in range(n):
             sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(
             sequences)
