@@ -5,6 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import User
 from deepgo.utils import go
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 
 
 class PredictionGroup(models.Model):
@@ -20,7 +21,7 @@ class PredictionGroup(models.Model):
     user = models.ForeignKey(
         User, related_name='prediction_groups', null=True,
         on_delete=models.SET_NULL)
-    date = models.DateTimeField()
+    date = models.DateTimeField(default=timezone.now)
     threshold = models.FloatField(
         default=0.3,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
