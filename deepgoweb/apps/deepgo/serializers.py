@@ -46,13 +46,9 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         return data
 
     def save(self):
+        self.instance = super(PredictionGroupSerializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
-        self.instance = PredictionGroup(
-            data_format=fmt,
-            data=data,
-            date=datetime.datetime.now(),
-            threshold=self.validated_data['threshold'])
         lines = data.splitlines()
         if fmt == 'enter':
             sequences = lines
