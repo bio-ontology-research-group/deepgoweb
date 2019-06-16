@@ -168,8 +168,8 @@ CELERY_BROKER_URL = 'pyamqp://{user}:{pwd}@{host}:{port}//'.format(
     port=RABBIT_PORT)
 
 CELERY_RESULT_BACKEND = 'rpc://'
-CELERY_WORKER_CONCURRENCY = 1
-CELERY_BROKER_POOL_LIMIT = 1
+CELERY_WORKER_CONCURRENCY = 10
+CELERY_BROKER_POOL_LIMIT = 100
 CELERY_BROKER_CONNECTION_TIMEOUT = 10
 
 # configure queues, currently we have only one
