@@ -1,0 +1,25 @@
+{% extends "deepgo/base.html" %}
+{% load widget_tweaks %}
+{% load static from staticfiles %}
+
+{% block content %}
+<form class="form form-inline" method="post">
+  {% csrf_token %}
+  {% for field in form.visible_fields %}
+  <div class="form-group">
+    {{ field.label_tag }}
+    {{ field|add_class:"form-control" }}
+    {{ form.errors }}
+  </div>
+  {% endfor %}
+  {% for field in form.hidden_fields %}
+  {{ field }}
+  {% endfor %}
+  <button type="submit" class="btn btn-primary">Download</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{% static "js/taxonomy.js" %}">
+</script>
+{% endblock %}

@@ -1,19 +1,18 @@
 from __future__ import absolute_import
-from django.conf.urls import include, url
+from django.urls import path, include
 from rest_framework.urlpatterns import format_suffix_patterns
 
 from deepgo.rest_views import (
     PredictionsCreateAPIView,
-    PredictionsRetrieveAPIView)
+    PredictionsRetrieveAPIView,
+    TaxonomyListAPIView)
 
 urlpatterns = [
-    url(
-        r'^get/(?P<pk>\d+)/$',
+    path('get/<int:pk>',
         PredictionsRetrieveAPIView.as_view(), name='api-predictions-get'),
-    url(
-        r'^create/$',
+    path('create',
         PredictionsCreateAPIView.as_view(), name='api-predictions-create'),
-    
+    path('organisms', TaxonomyListAPIView.as_view(), name='api-taxonomy')
 ]
 
-urlpatterns = format_suffix_patterns(urlpatterns)
+# urlpatterns = format_suffix_patterns(urlpatterns)

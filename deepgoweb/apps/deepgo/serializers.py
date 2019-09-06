@@ -1,4 +1,4 @@
-from deepgo.models import Prediction, PredictionGroup
+from deepgo.models import Prediction, PredictionGroup, Taxonomy
 from rest_framework import serializers
 from deepgo.utils import (
     read_fasta)
@@ -6,6 +6,13 @@ from deepgo.aminoacids import is_ok, MAXLEN
 import datetime
 from deepgo.tasks import predict_functions
 
+
+class TaxonomySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Taxonomy
+        fields = ['id', 'name']
+        
 
 class PredictionSerializer(serializers.ModelSerializer):
 

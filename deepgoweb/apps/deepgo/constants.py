@@ -16,3 +16,10 @@ NAMESPACES = {
 EXP_CODES = set([
     'EXP', 'IDA', 'IPI', 'IMP', 'IGI', 'IEP', 'TAS', 'IC',])
 #    'HTP', 'HDA', 'HMP', 'HGI', 'HEP'])
+
+QUALIFIERS = {
+    NAMESPACES['mf']: 'enables',
+    NAMESPACES['bp']: 'involved in',
+    NAMESPACES['cc']: 'part of',
+    
+}

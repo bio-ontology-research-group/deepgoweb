@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from deepgo.utils import go
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
+from deepgo.constants import QUALIFIERS
 
 
 class PredictionGroup(models.Model):
@@ -88,6 +89,12 @@ class Protein(models.Model):
         blank=True, null=True, related_name='proteins')
     reviewed = models.BooleanField(default=False)
 
+    class Meta:
+
+        index_together = [
+            ['id', 'taxon'],
+        ]
+
     def __str__(self):
         return self.acc_id
     
@@ -116,3 +123,7 @@ class Annotation(models.Model):
     @property
     def namespace(self):
         return go.get(self.function)['namespace']
+
+    @property
+    def qualifier(self):
+        return QUALIFIERS[self.namespace]

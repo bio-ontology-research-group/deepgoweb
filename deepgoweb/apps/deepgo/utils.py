@@ -9,6 +9,7 @@ from deepgo.constants import (
     FUNC_DICT,
     NAMESPACES)
 
+
 class Ontology(object):
 
     def __init__(self, filename='data/go.obo', with_rels=True):
