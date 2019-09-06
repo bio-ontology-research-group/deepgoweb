@@ -69,10 +69,50 @@ class Prediction(models.Model):
         ret.append({'name': 'Biological Process', 'functions': res['biological_process']})
         return ret
 
+
+class Taxonomy(models.Model):
+    id = models.PositiveIntegerField(primary_key=True)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return str(self.id)
                 
 class Protein(models.Model):
-    uni_accession = models.CharField(max_length=16, unique=True)
-    uni_entry_id = models.CharField(max_length=16, unique=True)
-    sequence = models.TextField()
-    sequence_md5 = models.CharField(max_length=32, db_index=True)
-    ppi_embedding = ArrayField(models.FloatField())
+    id = models.BigIntegerField(primary_key=True)
+    acc_id = models.CharField(max_length=15, unique=True)
+    pro_id = models.CharField(max_length=31, db_index=True)
+    name = models.CharField(max_length=255)
+    gene = models.CharField(max_length=63, blank=True, null=True)
+    taxon = models.ForeignKey(
+        Taxonomy, on_delete=models.SET_NULL, db_index=True,
+        blank=True, null=True, related_name='proteins')
+    reviewed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.acc_id
+    
+    
+class Annotation(models.Model):
+    protein = models.ForeignKey(
+        Protein, on_delete=models.CASCADE, db_index=True,
+        related_name='annotations')
+    go_id = models.PositiveIntegerField(db_index=True)
+    score = models.PositiveIntegerField()
+
+    class Meta:
+
+        unique_together = [
+            ['protein', 'go_id'],
+        ]
+
+    @property
+    def function(self):
+        return f'GO:{self.go_id:07d}'
+
+    @property
+    def label(self):
+        return go.get(self.function)['label']
+
+    @property
+    def namespace(self):
+        return go.get(self.function)['namespace']

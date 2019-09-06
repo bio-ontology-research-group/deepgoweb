@@ -1,10 +1,9 @@
 from django.urls import include, path
 from django.contrib.auth.decorators import login_required
-from deepgo.views import (
-    PredictionDetailView,
-    PredictionCreateView)
+from deepgo import views
 
 urlpatterns = [
-    path('', PredictionCreateView.as_view(), name='prediction'),
-    path('detail/<int:pk>', PredictionDetailView.as_view(), name='prediction-detail'),
+    path('', views.PredictionCreateView.as_view(), name='prediction'),
+    path('detail/<int:pk>', views.PredictionDetailView.as_view(), name='prediction-detail'),
+    path('annotations', views.AnnotationsListView.as_view(), name='annotations'),
 ]

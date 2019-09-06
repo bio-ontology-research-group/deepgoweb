@@ -1,9 +1,10 @@
 from django.urls import reverse
 from django.views.generic import (
-    CreateView, DetailView)
+    CreateView, DetailView, ListView)
 from deepgo.forms import PredictionForm
 
-from deepgo.models import PredictionGroup
+from deepgo.models import PredictionGroup, Annotation
+from deepgoweb.mixins import ActionMixin
 
 
 class PredictionCreateView(CreateView):
@@ -30,3 +31,16 @@ class PredictionDetailView(DetailView):
             *args, **kwargs)
         pg = context['object']
         return context
+
+
+class AnnotationsListView(ActionMixin, ListView):
+    template_name = 'deepgo/annotations.html'
+    model = Annotation
+    paginate_by = 10
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(
+            AnnotationsListView, self).get_queryset(*args, **kwargs)
+        return queryset
+
+    

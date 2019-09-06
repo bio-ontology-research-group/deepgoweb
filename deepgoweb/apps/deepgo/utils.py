@@ -166,4 +166,16 @@ def read_fasta(lines):
     info.append(inf)
     return info, seqs
 
+
+def acc2id(acc_id):
+    res = 0
+    base = 36
+    for c in acc_id:
+        if c.isdigit():
+            res = res * base + (ord(c) - ord('0'))
+        else:
+            res = res * base + (ord(c) - ord('A') + 10)
+    return res
+
+
 go = Ontology()

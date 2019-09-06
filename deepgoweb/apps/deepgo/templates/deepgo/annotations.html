@@ -1,0 +1,31 @@
+{% extends "deepgo/base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+<table class="table table-striped">
+  <thead>
+    <th>#</th>
+    <th>Accession</th>
+    <th>Protein</th>
+    <th>Gene</th>
+    <th>Function</th>
+    <th>Evidence</th>
+    <th>Score</th>
+  </thead>
+  <tbody>
+    {% for annot in object_list %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ annot.protein.acc_id }}</td>
+      <td>{{ annot.protein.pro_id }}</td>
+      <td>{{ annot.protein.gene }}</td>
+      <td>{{ annot.function }}</td>
+      <td>ECO:0000203</td>
+      <td>{{ annot.score }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include "paginator.html" %}
+
+{% endblock %}

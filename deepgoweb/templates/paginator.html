@@ -1,0 +1,33 @@
+{% load i18n %}
+{% if is_paginated %}
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li><a href="?page={{ page_obj.previous_page_number }}"><span aria-hidden="true">«</span><span class="sr-only"></span></a></li>
+    {% else %}
+      <li class="disabled"><a href="#"><span aria-hidden="true">«</span><span class="sr-only">{% trans "Previous" %}</span></a></li>
+    {% endif %}
+
+    {% with page=page_obj.number pagem2=page_obj.number|add:"-2" pagem1=page_obj.number|add:"-1" pagep1=page_obj.number|add:"1" pagep2=page_obj.number|add:"2" %}
+      {% if pagem2 >= 1 %}
+        <li><a href="?page={{ pagem2 }}">{{ pagem2 }}</a></li>
+      {% endif %}
+      {% if pagem1 >= 1 %}
+        <li><a href="?page={{ pagem1 }}">{{ pagem1 }}</a></li>
+      {% endif %}
+      <li class="active"><a href="?page={{ page }}">{{ page }}</a></li>
+      {% if pagep1 <= paginator.num_pages %}
+        <li><a href="?page={{ pagep1 }}">{{ pagep1 }}</a></li>
+      {% endif %}
+      {% if pagep2 <= paginator.num_pages %}
+        <li><a href="?page={{ pagep2 }}">{{ pagep2 }}</a></li>
+      {% endif %}
+    {% endwith %}
+    {% if page_obj.has_next %}
+      <li><a href="?page={{ page_obj.next_page_number }}"><span aria-hidden="true">»</span><span class="sr-only">{% trans "Next" %}</span></a></li>
+    {% else %}
+      <li class="disabled"><a href="#"><span aria-hidden="true">»</span><span class="sr-only">{% trans "Next" %}</span></a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
