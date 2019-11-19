@@ -157,14 +157,20 @@ SITE_ID = 1
 SITE_DOMAIN = 'localhost:8000'
 
 # Celery configuration
-RABBIT_HOST = 'localhost'
-RABBIT_PORT = 5672
+# RABBIT_HOST = 'localhost'
+# RABBIT_PORT = 5672
 
-CELERY_BROKER_URL = 'pyamqp://{user}:{pwd}@{host}:{port}//'.format(
-    user=os.environ.get('RABBIT_USER', 'guest'),
-    pwd=os.environ.get('RABBIT_PASSWORD', 'guest'),
-    host=RABBIT_HOST,
-    port=RABBIT_PORT)
+# CELERY_BROKER_URL = 'pyamqp://{user}:{pwd}@{host}:{port}//'.format(
+#     user=os.environ.get('RABBIT_USER', 'guest'),
+#     pwd=os.environ.get('RABBIT_PASSWORD', 'guest'),
+#     host=RABBIT_HOST,
+#     port=RABBIT_PORT)
+
+# CELERY SETTINGS
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 CELERY_RESULT_BACKEND = 'rpc://'
 CELERY_WORKER_CONCURRENCY = 10
