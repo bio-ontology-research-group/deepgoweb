@@ -16,11 +16,15 @@ class TaxonomySerializer(serializers.ModelSerializer):
 
 class PredictionSerializer(serializers.ModelSerializer):
 
+    functions = serializers.SerializerMethodField()
+    
     class Meta:
         model = Prediction
-        fields = ['sequence', 'functions', 'scores']
-
-        
+        fields = ['protein_info', 'sequence', 'functions']
+    
+    def get_functions(self, obj):
+        return obj.get_functions()
+    
 class PredictionGroupSerializer(serializers.ModelSerializer):
 
     predictions = PredictionSerializer(many=True, read_only=True)
