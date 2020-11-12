@@ -68,7 +68,7 @@ public class deepGO extends PFuncListAndList {
 				       final Node predicate,
 				       final PropFuncArg object,
 				       final ExecutionContext execCxt) {
-	String sequence = object.getArg(0).toString();
+	String sequence = object.getArg(0).toString().replace("\"", "");
 	double threshold = Double.parseDouble(
 	    object.getArg(1).getLiteralLexicalForm().toString());
 	ArrayList<String[]> arr = Functions.deepgo(sequence, threshold);

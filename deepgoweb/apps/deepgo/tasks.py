@@ -36,7 +36,7 @@ def predict_functions(sequences):
         model = load_model('data/model.h5')
 
     
-    p = Popen(['diamond', 'blastp', '-d', 'data/train_data',
+    p = Popen(['diamond', 'blastp', '-d', 'data/train_data', '--more-sensitive',
                '--outfmt', '6', 'qseqid', 'sseqid', 'bitscore'], stdin=PIPE, stdout=PIPE)
     
     for i in range(len(sequences)):
@@ -92,6 +92,9 @@ def predict_functions(sequences):
     # Combine diamond preds and deepgo
     for prot_id in range(len(sequences)):
         annots = {}
+        sim_prots = {}
+        if prot_id in mapping:
+            sim_prots = mapping[prot_id]
         if prot_id in diamond_preds:
             for go_id, score in diamond_preds[prot_id].items():
                 annots[go_id] = score * alpha
@@ -109,7 +112,7 @@ def predict_functions(sequences):
                 else:
                     annots[g_id] = annots[go_id]
 
-        results.append(annots)
+        results.append((annots, sim_prots))
         
     return results
 

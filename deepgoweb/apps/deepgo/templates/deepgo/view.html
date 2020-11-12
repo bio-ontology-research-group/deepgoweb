@@ -5,7 +5,15 @@
 {% for pred in object.predictions.all %}
   <div class="row">
     <div class="col-md-6 sequence">
+      <p>
       {% if pred.protein_info %}{{ pred.protein_info }} <br/> {% endif %} {{ pred.sequence }}
+      </p>
+      <h3>Set of similar protein sequences with experimental annotations</h3>
+      <ul class="list">
+        {% for prot_id in pred.similar_proteins %}
+        <li><a href="https://www.uniprot.org/uniprot/{{ prot_id }}" target="blank">{{ prot_id }}</a></li>
+        {% endfor %}
+      </ul>
     </div>
     <div class="col-md-6">
       <ul class="list">
@@ -14,7 +22,8 @@
 	<li> {{ ont.name }}
 	  <ul class="list">
 	    {% for func in ont.functions %}
-	    <li> {{ func.0 }} - {{ func.1 }} - {{ func.2|floatformat:3 }}</li>
+	    <li> <a href="http://amigo.geneontology.org/amigo/term/{{ func.0 }}" target="blank">
+                {{ func.0 }} </a> - {{ func.1 }} - {{ func.2|floatformat:3 }}</li>
 	    {% endfor %}
 	  </ul>
 	</li>

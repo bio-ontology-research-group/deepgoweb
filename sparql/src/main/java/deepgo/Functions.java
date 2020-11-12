@@ -13,7 +13,7 @@ import org.apache.http.impl.client.*;
 
 public class Functions {
     
-    public static final String DEEPGO_API_URI = "http://localhost/deepgo/api/create/";
+    public static final String DEEPGO_API_URI = "http://localhost/deepgo/api/create";
     public static final String NAMESPACE = "http://deepgoplus.bio2vec.net/";
     
     public static ArrayList<String[]> deepgo(String sequence, double threshold) {
@@ -42,9 +42,10 @@ public class Functions {
                 JSONArray subFuncs = (JSONArray)(obj.get("functions"));
                 for (int k = 0; k < subFuncs.length(); k++) {
                     JSONArray goArr = (JSONArray) subFuncs.get(k);
+                    String goURI = goArr.get(0).toString().replace("GO:", "http://purl.obolibrary.org/obo/GO_");
                     result.add(new String[]{
                             obj.get("name").toString(),
-                            goArr.get(0).toString(),
+                            goURI,
                             goArr.get(1).toString(),
                             goArr.get(2).toString()
                         });
@@ -72,6 +73,8 @@ public class Functions {
 			
 		    if (statusCode < 200 || statusCode >= 300) {
 			System.err.println("Method failed: " + response.getStatusLine());
+                        String responseBody = EntityUtils.toString(entity, "UTF-8");
+			System.err.println(responseBody);
 		    } else {
 			// Read the response body.
 			String responseBody = EntityUtils.toString(entity, "UTF-8");
