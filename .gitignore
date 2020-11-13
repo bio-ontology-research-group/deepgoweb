@@ -9,3 +9,5 @@ data-*/
 *~
 .yarn-integrity
 yarn.lock
+sparql/build/
+sparql/.gradle/

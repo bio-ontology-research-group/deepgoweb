@@ -67,14 +67,18 @@ class PredictionForm(forms.ModelForm):
                 pred = Prediction(sequence=sequences[i])
             else:
                 pred = Prediction(protein_info=info[i], sequence=sequences[i])
-            funcs = preds[i]
+            funcs, sim_prots = preds[i]
             functions = list()
             scores = list()
+            similar_proteins = list()
             for go_id, score in funcs.items():
                 functions.append(go_id)
                 scores.append(float(score))
+            for prot_id, score in sim_prots.items():
+                similar_proteins.append(prot_id)
             pred.functions = functions
             pred.scores = scores
+            pred.similar_proteins = similar_proteins
             pred.group = self.instance
             predictions.append(pred)
         Prediction.objects.bulk_create(predictions)

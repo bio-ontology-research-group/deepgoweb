@@ -33,6 +33,8 @@ class Prediction(models.Model):
     sequence = models.TextField()
     functions = ArrayField(
         models.CharField(max_length=15), blank=True, null=True)
+    similar_proteins = ArrayField(
+        models.CharField(max_length=31), blank=True, null=True)
     scores = ArrayField(models.FloatField(default=0.0), blank=True, null=True)
     group = models.ForeignKey(
         PredictionGroup, related_name='predictions', null=True,

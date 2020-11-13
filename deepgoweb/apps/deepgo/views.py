@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.views.generic.base import TemplateView
 from django.views.generic import (
     CreateView, DetailView, ListView)
 from django.views import View
@@ -12,6 +13,9 @@ import gzip
 from io import BytesIO
 from django.utils import timezone
 
+
+class SparqlFormView(TemplateView):
+    template_name = 'deepgo/sparql.html'
 
 class PredictionCreateView(CreateView):
 
