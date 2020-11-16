@@ -31,7 +31,7 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PredictionGroup
-        fields = ['id', 'data_format', 'data', 'threshold', 'predictions']
+        fields = ['uuid', 'data_format', 'data', 'threshold', 'predictions']
         extra_kwargs = {
             'data': {'write_only': True}}
 

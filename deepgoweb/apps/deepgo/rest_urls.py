@@ -8,7 +8,7 @@ from deepgo.rest_views import (
     TaxonomyListAPIView)
 
 urlpatterns = [
-    path('get/<int:pk>',
+    path('get/<uuid:uuid>',
         PredictionsRetrieveAPIView.as_view(), name='api-predictions-get'),
     path('create',
         PredictionsCreateAPIView.as_view(), name='api-predictions-create'),

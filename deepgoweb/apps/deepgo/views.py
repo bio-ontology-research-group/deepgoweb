@@ -28,13 +28,15 @@ class PredictionCreateView(CreateView):
         return context
 
     def get_success_url(self):
-        return reverse('prediction-detail', kwargs={'pk': self.object.pk})
+        return reverse('prediction-detail', kwargs={'uuid': self.object.uuid})
 
 
 class PredictionDetailView(DetailView):
 
     template_name = 'deepgo/view.html'
     model = PredictionGroup
+    slug_url_kwarg = 'uuid'
+    slug_field = 'uuid'
 
     def get_context_data(self, *args, **kwargs):
         context = super(PredictionDetailView, self).get_context_data(

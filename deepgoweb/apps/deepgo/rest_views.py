@@ -15,7 +15,9 @@ class PredictionsCreateAPIView(generics.CreateAPIView):
 class PredictionsRetrieveAPIView(generics.RetrieveAPIView):
     queryset = PredictionGroup.objects.all()
     serializer_class = PredictionGroupSerializer
-
+    lookup_field='uuid'
+    pk_url_kwarg = 'uuid'
+    
 
 class TaxonomyListAPIView(generics.ListAPIView):
     queryset = Taxonomy.objects.all()

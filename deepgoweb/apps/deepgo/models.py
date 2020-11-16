@@ -7,9 +7,11 @@ from deepgo.utils import go
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from deepgo.constants import QUALIFIERS
+import uuid
 
 
 class PredictionGroup(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     DATA_FORMAT_CHOICES = (
         ('enter', 'Raw Sequence'),
         ('fasta', 'FASTA'))
