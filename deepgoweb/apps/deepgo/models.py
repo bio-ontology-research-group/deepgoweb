@@ -43,6 +43,10 @@ class Prediction(models.Model):
         PredictionGroup, related_name='predictions', null=True,
         on_delete=models.SET_NULL)
 
+    def get_similar_proteins(self):
+        for i in range(len(self.similar_proteins)):
+            yield (self.similar_proteins[i], self.similar_scores[i])
+
     def function_names(self):
         if self.scores is None:
             for func in self.functions:

@@ -9,11 +9,17 @@
       {% if pred.protein_info %}{{ pred.protein_info }} <br/> {% endif %} {{ pred.sequence }}
       </p>
       <h3>Set of similar protein sequences with experimental annotations</h3>
-      <ul class="list">
-        {% for prot_id in pred.similar_proteins %}
-        <li><a href="https://www.uniprot.org/uniprot/{{ prot_id }}" target="blank">{{ prot_id }}</a></li>
+      <table class="table table-striped">
+        <thead><th>Protein</th><th>Bitscore</th></thead>
+        <tbody>
+          {% for prot_id, score in pred.get_similar_proteins %}
+          <tr>
+            <td><a href="https://www.uniprot.org/uniprot/{{ prot_id }}"
+                   target="blank">{{ prot_id }}</a></td>
+            <td>{{ score }}</td>
         {% endfor %}
-      </ul>
+        </tbody>
+      </table>
     </div>
     <div class="col-md-6">
       <ul class="list">
