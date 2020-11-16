@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+<div class="docs-wrapper">
+<div id="docs-sidebar" class="docs-sidebar">
+    <nav id="docs-nav" class="docs-nav navbar">
+        <ul class="section-items list-unstyled nav flex-column pb-3">
+            <li class="nav-item section-title"><a class="nav-link scrollto active" href="#section-1"><span class="theme-icon-holder mr-2"><i class="fas fa-map-signs"></i></span>MRSA Sequence Uploader</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-1">BORG/CBRC Arvados Cloud Platform</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-2">Using Web portal for uploading</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-3">Metadata File Format</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-4">Sequence Read File Format</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-5">SPARQL</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-1-6">Accessing MRSA Pangenome Analysis Results</a></li>
+            <li class="nav-item section-title"><a class="nav-link scrollto active" href="#section-2"><span class="theme-icon-holder mr-2"><i class="fas fa-map-signs"></i></span>Commandline Tool</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-2-1">Installation</a></li>
+            <li class="nav-item"><a class="nav-link scrollto" href="#item-2-2">Usage</a></li>
+        </ul>
+    </nav><!--//docs-nav-->
+</div><!--//docs-sidebar-->
+    <div class="docs-content">
+        <div class="content">
+            <article class="docs-article" id="section-1">
+                <header class="docs-header">
+                    <h1 class="docs-heading">MRSA Sequence Uploader<!-- <span class="docs-time">Last updated: </span>--></h1>
+                    <section class="docs-intro">
+                        <p>MRSA Sequence Uploader is a platform that allows researchers to upload sequence data of MRSA bacteria to a public 
+                        repository. There are two ways to upload the sequence data, one is this website and the other on the command line. 
+                        You can use it to upload the genomes of MRSA samples to make them publicly and freely available to other researchers.</p>
+                    </section><!--//docs-intro-->
+                    <section class="docs-section" id="item-1-1">
+						<h2 class="section-heading">BORG/CBRC Arvados Cloud Platform</h2>
+						<p>The uploader uses the Arvados Cloud platform for managing, processing, and sharing genomic and other large scientific and biomedical data. 
+                        The Arvados <a class="theme-link" href="https://workbench.cborg.cbrc.kaust.edu.sa/" target="_blank">instance</a> is deployed on BORG/CBRC servers for testing and development. </p>
+                        <p>In order to use BORG/CBRC Arvados platform for managing your data, user can create his/her account and sign in to arvados platform.</p>
+                        <h5 class="pt-2">Getting an API token</h5>
+                        <p>The Arvados API token is a secret key that enables user to authenticate themselves in order to use the command line tools 
+                        that are using arvados platform to manage data.</p>    
+                        <p><strong>MRSA Sequence uploader</strong> also requires the arvados API token to be set as environment variable before running it.</p>
+                        <h5 class="pt-2">Setting API token as environment variables</h5>
+                        <p>The Current token page, accessed using the dropdown menu icon in the upper right corner of the top navigation menu on <a class="theme-link" href="https://workbench.cborg.cbrc.kaust.edu.sa/" target="_blank">arvados web inteface</a>, 
+                        includes a command you may copy and paste directly into the shell. It will look something as the following.</p>
+                        <div class="docs-code-block">
+							<code class="shell">export ARVADOS_API_TOKEN=2jv9346o396exampledonotuseexampledonotuseexes7j1ld</code><br />
+                            <code class="shell">export ARVADOS_API_HOST=cborg.cbrc.kaust.edu.sa</code>
+                        </div>
+					</section><!--//section-->
+				    <section class="docs-section" id="item-1-2">
+						<h2 class="section-heading">Using MRSA Web portal for uploading</h2>
+						<p>For uploading the sequence data, You can follow the following steps: </p>
+						<ol>
+						    <li>You will need to sign in if you have already registered. You can sign in using your ORCID account to by clicking on <strong class="mr-1">Orcid.org</strong> link on sign in page.</li>
+						    <li>Once you are logged in, click on the <strong class="mr-1">Upload</strong> menu from top menu bar.</li>
+						    <li>Choose the two sequence read files to be uploaded and metadata file (or fill the input fields in the form) from the file system and submit the form. It will take few minutes to upload and process sequence file.</li>
+						    <li> Once the data is processed, click on the <strong class="mr-1">Submissions</strong> menu from the menu bar to see your submission.</li>
+						    <li>Click on the view link to see the details.</li>
+						    <li>The ID of the submission is the URL to the sequence data directory in the Arvados. Click on the URL to see the submitted data.</li>
+                            <li>You can download and view uploaded files on arvados web interface.</li>
+						</ol>
+					</section><!--//section-->
+
+					
+					<section class="docs-section" id="item-1-3">
+						<h2 class="section-heading">Metadata File Format</h2>
+						<p>The structure of the metadata file is described in <a class="theme-link" href="https://yaml.org/" target="_blank">YAML</a> 
+                        language. The schema file is available <a class="theme-link" href="https://github.com/bio-ontology-research-group/mrsa-sequences/blob/master/uploader/schema.yml" target="_blank">here</a>.</p>
+                        <h5>Metadata file fields description:</h5>
+						<div class="table-responsive my-4">
+							<table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                    <th class="theme-bg-light">Field Name</th>
+                                    <th class="theme-bg-light">Required</th>
+                                    <th class="theme-bg-light">Description</th>
+                                    </tr>
+                                </thead>
+								<tbody>
+								    <tr>
+									    <td>id </td>
+									    <td>required </td>
+									    <td>The subject (eg the fasta/fastq file) that the metadata describes</td>
+									</tr>
+								    <tr>
+									    <td>host.host_species</td>
+									    <td>required </td>
+									    <td>Host species as defined in NCBITaxon, e.g. http://purl.obolibrary.org/obo/NCBITaxon_9606 for Homo sapiens</td>
+									</tr>
+								    <tr>
+									    <td>host.host_id </td>
+									    <td>optional </td>
+									    <td>Identifer for the host. If you submit multiple samples from the same host, use the same host_id for those samples</td>
+									</tr>
+								    <tr>
+									    <td>host.host_sex </td>
+									    <td>optional </td>
+									    <td>Sex of the host as defined in PATO, expect male () or female ()</td>
+									</tr>
+								    <tr>
+									    <td>host.host_age </td>
+									    <td>optional </td>
+									    <td>Age of the host as number (e.g. 50)</td>
+									</tr>
+								    <tr>
+									    <td>host.host_age_unit </td>
+									    <td>optional </td>
+									    <td>Unit of host age e.g. http://purl.obolibrary.org/obo/UO_0000036</td>
+									</tr>
+								    <tr>
+									    <td>host.host_health_status </td>
+									    <td>optional </td>
+									    <td>A condition or state at a particular time, must be one of the following (obo:NCIT_C115935 obo:NCIT_C3833 obo:NCIT_C25269 obo:GENEPIO_0002020 obo:GENEPIO_0001849 obo:NCIT_C28554 obo:NCIT_C37987)</td>
+									</tr>
+								    <tr>
+									    <td>host.host_treatment </td>
+									    <td>optional </td>
+									    <td>Process in which the act is intended to modify or alter host status</td>
+									</tr>
+								    <tr>
+									    <td>host.host_vaccination </td>
+									    <td>optional </td>
+									    <td>List of vaccines given to the host</td>
+									</tr>
+								    <tr>
+									    <td>host.ethnicity </td>
+									    <td>optional </td>
+									    <td>Ethinicity of the host e.g. http://purl.obolibrary.org/obo/HANCESTRO_0010</td>
+									</tr>
+								    <tr>
+									    <td>host.additional_host_information </td>
+									    <td>optional </td>
+									    <td> Field for additional host information</td>
+									</tr> 
+								    <tr>
+									    <td>sample.sample_id </td>
+									    <td>required </td>
+									    <td>Id of the sample as defined by the submitter</td>
+									</tr>
+								    <tr>
+									    <td>sample.collection_date </td>
+									    <td>required </td>
+									    <td>Date when the sample was taken</td>
+									</tr>
+								    <tr>
+									    <td>sample.collection_location </td>
+									    <td>required </td>
+									    <td>Geographical location where the sample was collected as wikidata reference, e.g. http://www.wikidata.org/entity/Q148 (China)</td>
+									</tr>
+								    <tr>
+									    <td>sample.collector_name </td>
+									    <td>optional </td>
+									    <td>Name of the person that took the sample</td>
+									</tr>
+								    <tr>
+									    <td>sample.collecting_institution </td>
+									    <td>optional </td>
+									    <td>Institute that was responsible for sampeling</td>
+									</tr>
+								    <tr>
+									    <td>sample.specimen_source </td>
+									    <td>optional </td>
+									    <td>There can be more than one source of specimen. Method how the specimen was derived as NCIT IRI, e.g. http://purl.obolibrary.org/obo/NCIT_C155831 (=nasopharyngeal swab)</td>
+									</tr>
+								    <tr>
+									    <td>sample.sample_storage_conditions </td>
+									    <td>optional </td>
+									    <td>Information about storage of a specified type, e.g.  frozen specimen, paraffin, fresh ....</td>
+									</tr>
+								    <tr>
+									    <td>sample.additional_collection_information </td>
+									    <td>optional </td>
+									    <td>Add additional comment about the circumstances that a sample was taken</td>
+									</tr>
+								    <tr>
+									    <td>sample.source_database_accession </td>
+									    <td>optional </td>
+									    <td>If data is deposit at a public resource (e.g. Genbank, ENA) enter the Accession Id here. Please use a resolveable URL (e.g. http://identifiers.org/insdc/LC522350.1#sequence)</td>
+									</tr>
+								    <tr>
+									    <td>bacteria.bacteria_species </td>
+									    <td>required </td>
+									    <td>The name of bacteria species from the NCBI taxonomy database, e.g. http://purl.obolibrary.org/obo/NCBITaxon_1280 for Staphylococcus aureus</td>
+									</tr>
+								    <tr>
+									    <td>bacteria.bacteria_strain </td>
+									    <td>optional </td>
+									    <td>Name of the bacteria strain</td>
+									</tr>
+								    <tr>
+									    <td>technology.sample_sequencing_technology </td>
+									    <td>optional </td>
+									    <td>Technology that was used to sequence this sample (e.g Sanger, Nanopor MiniION)</td>
+									</tr>
+								    <tr>
+									    <td>technology.sequence_assembly_method </td>
+									    <td>optional </td>
+									    <td>Protocol which provides instructions on the alignment of sequencing reads to reference genome</td>
+									</tr>
+								    <tr>
+									    <td>technology.sequencing_coverage </td>
+									    <td>optional </td>
+									    <td>Sequence coverage defined as the average number of reads representing a given nucleotide (e.g. [100]) - if multiple technologies were used multiple float values can be submitted e.g. [100, 20]</td>
+									</tr>
+								    <tr>
+									    <td>technology.additional_technology_information </td>
+									    <td>optional </td>
+									    <td>Field for additional technology information</td>
+									</tr>
+								    <tr>
+									    <td>phenotypes.susceptibility.antimicrobial_agent</td>
+									    <td>required </td>
+									    <td>Antimicrobial agent, e.g. http://purl.obolibrary.org/obo/CHEBI_18208 for benzylpenicillin</td>
+									</tr>
+								    <tr>
+									    <td>phenotypes.susceptibility.mic </td>
+									    <td>optional </td>
+									    <td>Minimum inhibitory concentration, e.g. value or <= value</td>
+									</tr>
+								    <tr>
+									    <td>phenotypes.susceptibility.interpretation </td>
+									    <td>optional </td>
+									    <td>Organismal quality, e. g. http://purl.obolibrary.org/obo/PATO_0001178 for resistant_to (R)</td>
+									</tr>
+								    <tr>
+									    <td>submitter.authors </td>
+									    <td>required </td>
+									    <td>Name(s) of the author(s)</td>
+									</tr>
+								    <tr>
+									    <td>submitter.submitter_name </td>
+									    <td>optional </td>
+									    <td>Name of the submitter(s)</td>
+									</tr>
+								    <tr>
+									    <td>submitter.submitter_address </td>
+									    <td>optional </td>
+									    <td>Address of the submitter</td>
+									</tr>
+								    <tr>
+									    <td>submitter.originating_lab </td>
+									    <td>optional </td>
+									    <td>Name of the laboratory that took the sample</td>
+									</tr>
+								    <tr>
+									    <td>submitter.lab_address </td>
+									    <td>optional </td>
+									    <td>Address of the laboratory where the sample was taken</td>
+									</tr>
+								    <tr>
+									    <td>submitter.provider_sample_id </td>
+									    <td>optional </td>
+									    <td></td>
+									</tr>
+								    <tr>
+									    <td>submitter.submitter_sample_id </td>
+									    <td>optional </td>
+									    <td></td>
+									</tr>
+								    <tr>
+									    <td>submitter.publication </td>
+									    <td>optional </td>
+									    <td>Reference to publication of this sample (e.g. DOI, pubmed ID, ...)</td>
+									</tr>
+								    <tr>
+									    <td>submitter.submitter_orcid </td>
+									    <td>optional </td>
+									    <td>ORCID of the submitter as a full URI, e.g. https://orcid.org/0000-0002-1825-0097</td>
+									</tr>
+								    <tr>
+									    <td>submitter.additional_submitter_information </td>
+									    <td>optional </td>
+									    <td>Field for additional submitter information</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+					<section class="docs-section" id="item-1-4">
+						<h2 class="section-heading">Sequence Read File Format</h2>
+						<p>The sequence read files should be in gzipped FASTQ File (*.fastq.gz) file format. The maximum size of the file size allowed to be uploaded is 512 MB.</p>
+					</section><!--//section-->
+					
+					<section class="docs-section" id="item-1-5">
+						<h2 class="section-heading">SPARQL</h2>
+						<p>To be able to make metadata available through SPARQL endpoint for querying, the uploader at time of upload converts the metadata into RDF.
+                         Single RDF resource is compiled that is linked against external resources such as NCBITaxon, PATO, CHEBI and Wikidata. The generated RDF
+                        file is hosted in any triple store and can be queried using SPARQL.</p>
+                        <p>RDF resource structure is described in <a class="theme-link" href="https://www.w3.org/TR/shacl/" target="_blank">SHACL</a> 
+                        language and the schema file is available <a class="theme-link" href="https://github.com/bio-ontology-research-group/mrsa-sequences/blob/master/uploader/shex.rdf" target="_blank">here</a>.</p>
+                        <p>The uploader web interface provides an interactive SPARQL query editor and the example queries for querying submitted data such as query for listing 
+                        all the submissions, listing submission for specific bacteria species and details of a specific submission.</p>
+					</section><!--//section-->
+					<section class="docs-section" id="item-1-6">
+						<h2 class="section-heading">Accessing MRSA Pangenome Analysis Results</h2>
+						<p>Our Pangenome analysis service runs the analysis over all the uploaded sequences twice a day. It then sync the latest results to 
+						<a class="theme-link" href="https://galaxy.cbrc.kaust.edu.sa/" target="_blank">BORG/CBRC's public galaxy server.</a></p>
+						The CBRC's galaxy instance provides a user friendly interface for analysis of bioscience and biomedical data, using a wide 
+						variety of tools and algorithms developed by an international team of experts and researchers.</p>
+                        <p>There is a shared data library for MRSA pangenome analysis on our galaxy instance. Here is the <a class="theme-link" href="https://galaxy.cbrc.kaust.edu.sa/library/list#folders/Fba751ee0539fff04" target="_blank">link</a> 
+						to latest pangenome analysis results.<p>
+					</section><!--//section-->
+			    </article>
+			    <article class="docs-article" id="section-2">
+				    <header class="docs-header">
+					    <h1 class="docs-heading">Commandline tool</h1>
+					    <section class="docs-intro">
+						    <p>To get started, you need to install the command line uploader first and then run the main.py script in uploader directory.</p>
+						</section><!--//docs-intro-->
+				    </header>
+				     <section class="docs-section" id="item-2-1">
+                        <h2 class="section-heading">Installation</h2>
+						<h5>Download</h5>
+						<p>You can download the uploader by cloning the github repository using following command:</p>
+                        <div class="docs-code-block">
+							<code class="shell">git clone https://github.com/bio-ontology-research-group/mrsa-sequences.git </code>
+                        </div>
+						<h5 class="pt-4">Prepare your system</h5>
+						<p>You need to make sure you have Python, and the ability to install modules such as `pycurl` and `pyopenssl`. On Ubuntu 18.04, you can run:</p>
+                        <div class="docs-code-block">
+							<code class="shell">sudo apt update</code><br />
+                            <code class="shell">sudo apt install -y virtualenv git libcurl4-openssl-dev build-essential python3-dev libssl-dev</code>
+                        </div>
+						<h5 class="pt-5">Create and enter your virtualenv.</h5>
+						<p>Go to downloaded uploader directory and make and enter a virtualenv:</p>
+                        <div class="docs-code-block">
+							<code class="shell">virtualenv --python python3 venv</code>
+                            <code class="shell">. venv/bin/activate</code>
+                        </div>
+                        <p  class="pt-2">Note that you will need to repeat the <code class="shell">`. venv/bin/activate`</code> step from this directory to enter your virtualenv whenever you want to use the installed tool.</p>
+                        <h5 class="pt-5">Install the dependencies</h5>
+						<p>Once the virtualenv is setup, install the dependencies:</p>
+                        <div class="docs-code-block">
+							<code class="shell">pip install -r requirements.txt</code>
+                        </div>
+                        <h5 class="pt-5">Test the tool</h5>
+						<p>Try running:</p>
+                        <div class="docs-code-block">
+							<code class="shell">python uploader/main.py --help</code>
+                        </div>
+                        <h5 class="pt-5">Set Arvados API Token</h5>
+						<p>Before uploading the sequence files, you need to set arvados api token value to environment variable ARVADOS_API_TOKEN. It will look something as the following:</p>
+                        <div class="docs-code-block">
+							<code class="shell">export ARVADOS_API_TOKEN=2jv9346o396exampledonotuseexampledonotuseexes7j1ld</code>
+                        </div>
+                        <p class="pt-2 pb-2">You can find the arvados token at <a class="theme-link" href="https://workbench.cborg.cbrc.kaust.edu.sa/current_token" target="_blank">current token link</a>
+                        in your user profile menu on <a class="theme-link" href="https://workbench.cborg.cbrc.kaust.edu.sa/" target="_blank">arvados web portal.</a></p>
+					</section><!--//section-->
+                    <section class="docs-section" id="item-2-2">
+                        <h2 class="section-heading">Usage</h2>
+                        <p>Run the uploader with a FASTA or FASTQ reads gzipped files and accompanying metadata file in YAML:</p>
+                        <div class="docs-code-block">
+							<code class="shell">python uploader/main.py reads1.fastq.gz reads2.fastq.gz metadata.yaml</code>
+                        </div>
+                        <p class="pt-2 pb-2">You can find the example files on mrsa <a class="theme-link" href="https://mrsa.cborg.cbrc.kaust.edu.sa/upload/" target="_blank">web uploader</a>. Here are the links to example files:</p>
+                        <ul>
+                            <li>Example <a class="theme-link" href="https://mrsa.cborg.cbrc.kaust.edu.sa/static/reads1.fastq.gz" target="_blank">fastq read file 1</a></li>
+                            <li>Example <a class="theme-link" href="https://mrsa.cborg.cbrc.kaust.edu.sa/static/reads2.fastq.gz" target="_blank">fastq read file 2</a></li>
+                            <li>Example <a class="theme-link" href="https://mrsa.cborg.cbrc.kaust.edu.sa/static/metadata.yaml" target="_blank">Metadata file</a></li>
+                        </ul>
+                        <p class="pt-2 pb-2">Once the sequence is uploaded, you can see the status of the job in state.json file.</p>
+                    </section>
+			    </article><!--//docs-article-->
+		    </div> 
+	    </div>
+    </div><!--//docs-wrapper-->
+</div>
+
+<script src="{% static "yarn/jquery/dist/jquery.min.js" %}"></script>
+<script src="{% static "yarn/popper.js/dist/umd/popper.min.js" %}"></script>
+<script src="{% static "yarn/bootstrap/dist/js/bootstrap.min.js" %}"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.8/highlight.min.js"></script>
+<script src="{% static "yarn/jquery.scrollto/jquery.scrollTo.min.js" %}"></script>
+<script src="{% static "yarn/ekko-lightbox/dist/ekko-lightbox.min.js" %}"></script> 
+<script src="{% static "js/doc.js" %}"></script> 
+{% endblock %}
