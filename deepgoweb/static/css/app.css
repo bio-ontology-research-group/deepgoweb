@@ -48,6 +48,12 @@ body {
     display: none;
 }
 
+.deepgo-sparql {
+    word-wrap: break-word;
+    display: none;
+}
+
+
 .deepgo-footer {
     padding: 40px 0;
     color: #999;

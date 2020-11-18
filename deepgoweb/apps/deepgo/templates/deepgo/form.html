@@ -5,9 +5,11 @@
 
 <div class="row">
   <div class="col-md-12">
-    <h1>DeepGOPlus Protein Function prediction.</h1> <br/>
-    <p>DeepGOPlus is a novel method for predicting protein functions
-      based on  protein sequence.
+    <h1>DeepGOWeb Protein Function prediction webserver</h1> <br/>
+    <p>DeepGOWeb is a webserverice for predicting protein functions
+      based on protein sequence using
+      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
+        DeepGOPlus</a> method.
       It uses deep convolutional neural networks to learn sequence
       features and combines predictions with sequence similarity
       based predictions.
@@ -20,14 +22,22 @@
     <p>The <a href="{% url "api-predictions-create" %}">REST API</a> is
     available for submitting sequences programmatically.
     </p>
+    <p>We also provide a <a href="{% url "sparql" %}">SPARQL</a>
+      endpoint for calling our predictor in SPARQL queries.
+    </p>
+    <p>
+      Input data:
+      <ul>
+        <li>Format: <strong>FASTA</strong> format or <strong>Raw
+        Sequences</strong> separated by a newline</li>
+        <li>Threshold: a value between 0.1 and 1.0 for filtering
+          predictions by the confidence score of the model</li>
+        <li>Data: Protein sequences in selected format</li>
+      </ul>
+    </p>
     <br/>
     <p style='color:red;'>
-      The number of sequences in one query should not exceed 1000!</p>
-    <p> Our previous function predictor
-      <a href="https://github.com/bio-ontology-research-group/deepgo">
-	DeepGO</a>
-      is available for running from command line.
-    </p>
+      The number of sequences in one query should not exceed 10!</p>
   </div>
 </div>
 <div class="row">

@@ -4,6 +4,61 @@
 {% block content %}
 <div class="row">
   <div class="offset-md-1 col-md-10">
+    <h2>DeepGOWeb SPARQL Endpoint</h2>
+    <p>
+      The SPARQL endpoint allows to call function prediction model in
+      SPARQL query. We provide a custom function called "deepgo" which
+      takes protein sequence and prediction threshold as an input and
+      returns predicted functions along with the subontology, label
+      and prediction score. The output can be downloaded in different
+      formats such as json, xml, csv or text.
+    </p>
+    <p>
+      Example queries:
+      <ul>
+        <li><a class="example" id="1" href="#">Example 1:</a> Simple example query</li>
+        <li><a class="example" id="2" href="#">Example 2:</a> Federated query which runs
+        deepgo on two sequences
+        from <a href="https://sparql.uniprot.org"> UniProt SPARQL Endpoint</a></li>
+      </ul>
+    </p>
+    <textarea class="deepgo-sparql" id="ex1">PREFIX dg: <http://deepgoplus.bio2vec.net/functions#>
+PREFIX GO: <http://purl.obolibrary.org/obo/GO_> 
+
+SELECT ?ont ?go ?label ?score
+{
+ (?ont ?go ?label ?score)
+		    dg:deepgo("MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL" 0.3) .
+}
+    </textarea>
+    <textarea class="deepgo-sparql" id="ex2">PREFIX dg: <http://deepgoplus.bio2vec.net/functions#>
+PREFIX GO: <http://purl.obolibrary.org/obo/GO_> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
+PREFIX up: <http://purl.uniprot.org/core/>
+SELECT ?protein ?organism ?isoform ?sub ?go ?label ?score
+WHERE
+{
+{
+SELECT DISTINCT ?protein ?organism ?isoform ?aa_sequence
+  WHERE 
+  {
+  SERVICE <http://sparql.uniprot.org/sparql> {
+    ?protein a up:Protein .
+    ?protein up:organism ?organism .
+    ?organism rdfs:subClassOf taxon:9606 .
+    ?protein up:sequence ?isoform .
+    ?isoform rdf:value ?aa_sequence .
+  }
+  }
+LIMIT 2
+}
+(?sub ?go ?label ?score) dg:deepgo(?aa_sequence 0.3) .
+}
+    </textarea>
+  </div>
+  <div class="offset-md-1 col-md-10">
     <form class="form" method="post" action="/ds/query">
       <div class="form-group row">
 	<label class="col-sm-3" for="query">SPARQL Query</label>
@@ -36,4 +91,18 @@ SELECT ?ont ?go ?label ?score
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+  $(function() {
+    $('.example').click(function(e) {
+      e.preventDefault();
+      var ex_id = e.currentTarget.id;
+  var query = $('#ex' + ex_id).text();
+  console.log(query);
+      $('#query').text(query);
+    });
+  });
+</script>
 {% endblock %}

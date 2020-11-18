@@ -36,6 +36,11 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
             'data': {'write_only': True}}
 
     def validate(self, data):
+        if 'data_format' not in data:
+            raise serializers.ValidationError(
+                'data_format field is required!'
+            )
+
         fmt = data['data_format']
         if fmt not in ('enter', 'fasta'):
             raise serializers.ValidationError(
@@ -46,9 +51,9 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
             seqs = lines
         else:
             info, seqs = read_fasta(lines)
-        if len(seqs) > 1000:
+        if len(seqs) > 10:
             raise serializers.ValidationError(
-                'Number of sequences should not be more than 1000!')
+                'Number of sequences should not be more than 10!')
         for seq in seqs:
             seq = seq.strip()
             if not is_ok(seq):
