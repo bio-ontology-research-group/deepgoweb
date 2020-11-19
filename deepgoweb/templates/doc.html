@@ -17,7 +17,7 @@
           </li>
           <li class="nav-item">
             <a class="nav-link scrollto" href="#item-1-1">
-              Web page for submitting protein sequences</a>
+              Web server for submitting protein sequences</a>
           </li>
           <li class="nav-item">
             <a class="nav-link scrollto" href="#item-1-2">
@@ -34,17 +34,19 @@
       <div class="content">
         <article class="docs-article" id="section-1">
           <header class="docs-header">
-            <h1 class="docs-heading">DeepGOWeb function predictor<!-- <span class="docs-time">Last updated: </span>--></h1>
+            <h1 class="docs-heading">DeepGOWeb function prediction webserver<!-- <span class="docs-time">Last updated: </span>--></h1>
             <section class="docs-intro">
-              <p>DeepGOWeb is a webserver for running DeepGOPlus
-                protein function predictor. It allows users to obtain
-                predicted functions in three different ways. First, by
-                using the <a href="{% url "prediction"%}">Prediction</a> web page users can enter protein
-                sequences and get predictions which are downloadable in
-                JSON format. Second, we provide a <a href="">REST
+              <p>DeepGOWeb is a webserver for DeepGOPlus
+                protein function prediction. It allows users to obtain
+                predicted protein functions in three different ways. First, 
+                using the <a href="{% url "prediction"%}">Prediction</a> web page, users can
+                submit protein sequences and obtain predictions which are downloadable in
+                JSON format. Second, DeepGOWeb provides a <a href="{%
+                url "api"%}">REST
                   API</a> for users to access our servers
-                programmatically. Finally, users can use our SPARQL
-                Endpoint to call our predictors within a SPARQL query.</p>
+                programmatically. Finally, users can use our
+                <a href="{% url "sparql"%}">SPARQL
+                endpoint</a> to call DeepGOPlus within a SPARQL query.</p>
             </section><!--//docs-intro-->
             <section class="docs-section" id="item-1-1">
 	      <h2 class="section-heading">Web page for submitting
@@ -55,11 +57,11 @@
                     "prediction"%}">Prediction</a> page:
                     <ul>
                       <li>Format: <strong>FASTA</strong> format or <strong>Raw
-                          Sequences</strong> separated by a newline</li>
+                          Sequences</strong> separated by a newline.</li>
                       <li>Threshold: a value between 0.1 and 1.0 for filtering
-                        predictions by the confidence score of the model</li>
-                      <li>Data: Protein sequences in selected
-                      format. Maximum 10 sequences are allowed in one request.</li>
+                        predictions by the confidence score of the model.</li>
+                      <li>Data: Protein sequences in the selected
+                      format. A maximum of 10 sequences are allowed in one request.</li>
                     </ul>
                   </p>
               <p>
@@ -71,7 +73,7 @@
             </section><!--//section-->
 	    <section class="docs-section" id="item-1-2">
 	      <h2 class="section-heading">REST API</h2>
-              <p>The REST API is for accessing the service
+              <p>The REST API allows accessing the DeepGOWeb service
               programmatically. Here we provide an example using
               python
               and <a href="https://requests.readthedocs.io/en/master/">Requests</a>
@@ -90,10 +92,10 @@ result = r.json()
 	    <section class="docs-section" id="item-1-3">
 	      <h2 class="section-heading">SPARQL</h2>
     <p>
-      The SPARQL endpoint allows to call function prediction model in
-      SPARQL query. We provide a custom function called "deepgo" which
-      takes protein sequence and prediction threshold as an input and
-      returns predicted functions along with the subontology, label
+      The SPARQL endpoint allows to call the DeepGOPlus function
+      prediction model within a SPARQL query. We provide a custom SPARQL function called "deepgo" which
+      takes a protein sequence and prediction threshold as an input and
+      returns the predicted functions along with the subontology, label,
       and prediction score. The output can be downloaded in different
       formats such as json, xml, csv or text.
     </p>
@@ -113,8 +115,8 @@ SELECT ?ont ?go ?label ?score
     </xmp></pre>
         </li>
         <li>Example 2: Federated query which runs
-        deepgo on two sequences
-        from <a href="https://sparql.uniprot.org"> UniProt SPARQL
+        DeepGOPlus on two sequences
+        from the <a href="https://sparql.uniprot.org"> UniProt SPARQL
             Endpoint</a>
          <pre><xmp>PREFIX dg: <http://deepgoplus.bio2vec.net/functions#>
 PREFIX GO: <http://purl.obolibrary.org/obo/GO_> 
@@ -152,7 +154,8 @@ LIMIT 2
             <h1 class="docs-heading">Commandline tool</h1>
             <section class="docs-intro">
               <p>Users can also install DeepGOPlus on their system
-              and run the predictor locally.</p>
+              and run DeepGOPlus locally. This is useful when
+              prediction functions for a large amount of protein sequences.</p>
             </section><!--//docs-intro-->
           </header>
           <section class="docs-section" id="item-2-1">
