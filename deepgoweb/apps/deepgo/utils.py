@@ -177,6 +177,3 @@ def acc2id(acc_id):
         else:
             res = res * base + (ord(c) - ord('A') + 10)
     return res
-
-
-go = Ontology()

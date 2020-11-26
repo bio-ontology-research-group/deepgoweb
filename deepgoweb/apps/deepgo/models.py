@@ -3,11 +3,26 @@ from __future__ import unicode_literals
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import User
-from deepgo.utils import go
+from deepgo.utils import Ontology
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from deepgo.constants import QUALIFIERS
 import uuid
+
+
+class Release(models.Model):
+    version = models.CharField(max_length=15, unique=True)
+    notes = models.TextField()
+    data_root = models.FilePathField(path='data/', allow_files=False, allow_folders=True)
+    alpha_bp = models.FloatField(
+        default=0.59, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+    alpha_mf = models.FloatField(
+        default=0.55, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+    alpha_cc = models.FloatField(
+        default=0.46, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+
+    def __str__(self):
+        return self.version
 
 
 class PredictionGroup(models.Model):
@@ -28,6 +43,9 @@ class PredictionGroup(models.Model):
     threshold = models.FloatField(
         default=0.3,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+    release = models.ForeignKey(
+        Release, related_name='prediction_groups', null=True,
+        on_delete=models.SET_NULL)
 
 
 class Prediction(models.Model):
@@ -78,61 +96,3 @@ class Prediction(models.Model):
         ret.append({'name': 'Molecular Function', 'functions': res['molecular_function']})
         ret.append({'name': 'Biological Process', 'functions': res['biological_process']})
         return ret
-
-
-class Taxonomy(models.Model):
-    id = models.PositiveIntegerField(primary_key=True)
-    name = models.CharField(max_length=255)
-
-    def __str__(self):
-        return str(self.id)
-                
-class Protein(models.Model):
-    id = models.BigIntegerField(primary_key=True)
-    acc_id = models.CharField(max_length=15, unique=True)
-    pro_id = models.CharField(max_length=31, db_index=True)
-    name = models.CharField(max_length=255)
-    gene = models.CharField(max_length=63, blank=True, null=True)
-    taxon = models.ForeignKey(
-        Taxonomy, on_delete=models.SET_NULL, db_index=True,
-        blank=True, null=True, related_name='proteins')
-    reviewed = models.BooleanField(default=False)
-
-    class Meta:
-
-        index_together = [
-            ['id', 'taxon'],
-        ]
-
-    def __str__(self):
-        return self.acc_id
-    
-    
-class Annotation(models.Model):
-    protein = models.ForeignKey(
-        Protein, on_delete=models.CASCADE, db_index=True,
-        related_name='annotations')
-    go_id = models.PositiveIntegerField(db_index=True)
-    score = models.PositiveIntegerField()
-
-    class Meta:
-
-        unique_together = [
-            ['protein', 'go_id'],
-        ]
-
-    @property
-    def function(self):
-        return f'GO:{self.go_id:07d}'
-
-    @property
-    def label(self):
-        return go.get(self.function)['label']
-
-    @property
-    def namespace(self):
-        return go.get(self.function)['namespace']
-
-    @property
-    def qualifier(self):
-        return QUALIFIERS[self.namespace]

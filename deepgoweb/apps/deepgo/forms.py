@@ -6,7 +6,6 @@ from django.core.exceptions import ValidationError
 from deepgo.utils import (
     read_fasta)
 from deepgo.aminoacids import is_ok, MAXLEN
-from deepgo.models import Taxonomy
 
 
 class PredictionForm(forms.ModelForm):
@@ -88,14 +87,3 @@ class PredictionForm(forms.ModelForm):
         return self.instance
 
     
-class DownloadForm(forms.Form):
-    organism = forms.CharField(strip=True)
-    org_id = forms.IntegerField(widget=forms.HiddenInput())
-    
-    def clean_org_id(self):
-        org_id = self.cleaned_data['org_id']
-        try:
-            Taxonomy.objects.get(id=org_id)
-        except Taxonomy.DoesNotExist:
-            raise forms.ValidationError('Organism does not exist!')
-        return org_id

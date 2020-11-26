@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
 from deepgo.aminoacids import MAXLEN, to_onehot
-from deepgo.models import Protein
 from deepgo.utils import Ontology
 import tensorflow as tf
 from subprocess import Popen, PIPE
