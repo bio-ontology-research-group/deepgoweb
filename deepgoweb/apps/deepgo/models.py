@@ -55,7 +55,7 @@ class PredictionGroup(models.Model):
         return self._go
 
     @property
-    def release_version(self):
+    def version(self):
         return self.release.version
 
 class Prediction(models.Model):

@@ -20,16 +20,18 @@ class PredictionSerializer(serializers.ModelSerializer):
     
 class PredictionGroupSerializer(serializers.ModelSerializer):
 
-    release_version = serializers.CharField(max_length=15)
+    version = serializers.CharField(max_length=15)
     predictions = PredictionSerializer(many=True, read_only=True)
     
     class Meta:
         model = PredictionGroup
-        fields = ['uuid', 'release_version', 'data_format', 'data', 'threshold', 'predictions']
+        fields = ['uuid', 'version', 'data_format', 'data', 'threshold', 'predictions']
         extra_kwargs = {
             'data': {'write_only': True}}
 
-    def validate_release_version(self, version):
+    def validate_version(self, version):
+        if version == 'latest':
+            return version
         queryset = Release.objects.filter(version=version)
         if not queryset.exists():
             raise serializers.ValidationError('Version does not exist')
@@ -62,11 +64,14 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         return data
 
     def save(self):
-        rel_ver = self.validated_data.pop('release_version')
+        rel_ver = self.validated_data.pop('version')
         self.instance = super(PredictionGroupSerializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
-        release = Release.objects.get(version=rel_ver)
+        if rel_ver == 'latest':
+            release = Release.objects.order_by('-pk').first()
+        else:
+            release = Release.objects.get(version=rel_ver)
         self.instance.release = release
         lines = data.splitlines()
         if fmt == 'enter':
