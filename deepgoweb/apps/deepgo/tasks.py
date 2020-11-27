@@ -7,35 +7,43 @@ from deepgo.aminoacids import MAXLEN, to_onehot
 from deepgo.utils import Ontology
 import tensorflow as tf
 from subprocess import Popen, PIPE
+from deepgo.models import Release
 
-go = None
-annotations = None
-model = None
-terms = None
+releases = {}
 
 @task
-def predict_functions(sequences):
-    global annotations
-    global model
-    global terms
-    global go
+def predict_functions(release_pk, sequences):
+    global releases
     # Load GO and read list of all terms
-    if go is None:
-        go = Ontology('data/go.obo', with_rels=True)
-        terms_df = pd.read_pickle('data/terms.pkl')
-        terms = terms_df['terms'].values.flatten()
+    if release_pk not in releases:
+        rel = Release.objects.get(pk=release_pk)
+        if len(releases) == 2: # Remove older version from dictionary
+            r_id = min(releases.keys())
+            del releases[r_id]
+        data_root = rel.data_root
+        releases[release_pk] = {}
+        releases[release_pk]['rel'] = rel
+        releases[release_pk]['go'] = Ontology(f'{data_root}/go.obo', with_rels=True)
+        terms_df = pd.read_pickle(f'{data_root}/terms.pkl')
+        releases[release_pk]['terms'] = terms_df['terms'].values.flatten()
 
         # Read known experimental annotations
-        annotations = {}
-        df = pd.read_pickle('data/train_data.pkl')
+        releases[release_pk]['annotations'] = {}
+        df = pd.read_pickle(f'{data_root}/train_data.pkl')
         for row in df.itertuples():
-            annotations[row.proteins] = set(row.annotations)
+            releases[release_pk]['annotations'][row.proteins] = set(row.annotations)
 
         # Load CNN model
-        model = load_model('data/model.h5')
+        releases[release_pk]['model'] = load_model(f'{data_root}/model.h5')
 
+    rel = releases[release_pk]['rel']
+    data_root = rel.data_root
+    go = releases[release_pk]['go']
+    terms = releases[release_pk]['terms']
+    annotations = releases[release_pk]['annotations']
+    model = releases[release_pk]['model']
     
-    p = Popen(['diamond', 'blastp', '-d', 'data/train_data', '--more-sensitive',
+    p = Popen(['diamond', 'blastp', '-d', f'{data_root}/train_data', '--more-sensitive',
                '--outfmt', '6', 'qseqid', 'sseqid', 'bitscore'], stdin=PIPE, stdout=PIPE)
     
     for i in range(len(sequences)):

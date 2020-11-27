@@ -22,7 +22,7 @@ class Release(models.Model):
         default=0.46, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
 
     def __str__(self):
-        return self.version
+        return f'Version - {self.version}'
 
 
 class PredictionGroup(models.Model):
@@ -47,6 +47,12 @@ class PredictionGroup(models.Model):
         Release, related_name='prediction_groups', null=True,
         on_delete=models.SET_NULL)
 
+    @property
+    def go(self):
+        if hasattr(self, '_go'):
+            return self._go
+        self._go = Ontology(filename=f'{self.release.data_root}/go.obo')
+        return self._go
 
 class Prediction(models.Model):
     protein_info = models.CharField(max_length=255, blank=True, null=True)
@@ -66,6 +72,7 @@ class Prediction(models.Model):
             yield (self.similar_proteins[i], self.similar_scores[i])
 
     def function_names(self):
+        go = self.group.go
         if self.scores is None:
             for func in self.functions:
                 if go.has_term(func):
@@ -74,6 +81,7 @@ class Prediction(models.Model):
                     yield (func, '')
     
     def get_functions(self):
+        go = self.group.go
         res = {
             'cellular_component': [],
             'molecular_function': [], 'biological_process': []}

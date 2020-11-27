@@ -1,5 +1,5 @@
 from django import forms
-from deepgo.models import Prediction, PredictionGroup
+from deepgo.models import Prediction, PredictionGroup, Release
 import datetime
 from deepgo.tasks import predict_functions
 from django.core.exceptions import ValidationError
@@ -10,6 +10,8 @@ from deepgo.aminoacids import is_ok, MAXLEN
 
 class PredictionForm(forms.ModelForm):
 
+    release = forms.ModelChoiceField(Release.objects.all(), empty_label=None)
+
     threshold = forms.FloatField(
         initial=0.3,
         min_value=0.0, max_value=1.0,
@@ -17,7 +19,7 @@ class PredictionForm(forms.ModelForm):
 
     class Meta:
         model = PredictionGroup
-        fields = ['data_format', 'threshold', 'data']
+        fields = ['release', 'data_format', 'threshold', 'data']
 
     def clean_data_format(self):
         data_format = self.cleaned_data['data_format']
@@ -57,6 +59,7 @@ class PredictionForm(forms.ModelForm):
         for i in range(n):
             sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(
+            self.cleaned_data['release'].pk,
             sequences)
         preds = preds.get()
         self.instance.save()
