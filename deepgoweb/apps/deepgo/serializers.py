@@ -1,4 +1,4 @@
-from deepgo.models import Prediction, PredictionGroup
+from deepgo.models import Prediction, PredictionGroup, Release
 from rest_framework import serializers
 from deepgo.utils import (
     read_fasta)
@@ -20,14 +20,21 @@ class PredictionSerializer(serializers.ModelSerializer):
     
 class PredictionGroupSerializer(serializers.ModelSerializer):
 
+    release_version = serializers.CharField(max_length=15)
     predictions = PredictionSerializer(many=True, read_only=True)
     
     class Meta:
         model = PredictionGroup
-        fields = ['uuid', 'data_format', 'data', 'threshold', 'predictions']
+        fields = ['uuid', 'release_version', 'data_format', 'data', 'threshold', 'predictions']
         extra_kwargs = {
             'data': {'write_only': True}}
 
+    def validate_release_version(self, version):
+        queryset = Release.objects.filter(version=version)
+        if not queryset.exists():
+            raise serializers.ValidationError('Version does not exist')
+        return version
+    
     def validate(self, data):
         if 'data_format' not in data:
             raise serializers.ValidationError(
@@ -55,9 +62,12 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         return data
 
     def save(self):
+        rel_ver = self.validated_data.pop('release_version')
         self.instance = super(PredictionGroupSerializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
+        release = Release.objects.get(version=rel_ver)
+        self.instance.release = release
         lines = data.splitlines()
         if fmt == 'enter':
             sequences = lines
@@ -67,6 +77,7 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         for i in range(n):
             sequences[i] = sequences[i].strip()
         preds = predict_functions.delay(
+            release.pk,
             sequences)
         preds = preds.get()
         self.instance.save()

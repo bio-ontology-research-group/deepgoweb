@@ -54,6 +54,10 @@ class PredictionGroup(models.Model):
         self._go = Ontology(filename=f'{self.release.data_root}/go.obo')
         return self._go
 
+    @property
+    def release_version(self):
+        return self.release.version
+
 class Prediction(models.Model):
     protein_info = models.CharField(max_length=255, blank=True, null=True)
     sequence = models.TextField()
