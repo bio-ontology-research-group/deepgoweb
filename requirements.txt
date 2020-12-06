@@ -9,7 +9,7 @@ cffi==1.14.4
 chardet==3.0.4
 cryptography==3.2.1
 defusedxml==0.6.0
-Django==2.1.7
+Django==2.2.13
 django-allauth==0.44.0
 django-widget-tweaks==1.4.8
 djangorestframework==3.9.2
