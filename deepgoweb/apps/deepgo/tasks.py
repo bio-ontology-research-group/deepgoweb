@@ -30,8 +30,11 @@ def predict_functions(release_pk, sequences):
         # Read known experimental annotations
         releases[release_pk]['annotations'] = {}
         df = pd.read_pickle(f'{data_root}/train_data.pkl')
+        annots_col = 'prop_annotations'
+        if annots_col not in df:
+            annots_col = 'annotations'
         for row in df.itertuples():
-            releases[release_pk]['annotations'][row.proteins] = set(row.annotations)
+            releases[release_pk]['annotations'][row.proteins] = set(getattr(row, annots_col))
 
         # Load CNN model
         releases[release_pk]['model'] = load_model(f'{data_root}/model.h5')

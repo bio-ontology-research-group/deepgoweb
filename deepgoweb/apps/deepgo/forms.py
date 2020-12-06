@@ -10,7 +10,8 @@ from deepgo.aminoacids import is_ok, MAXLEN
 
 class PredictionForm(forms.ModelForm):
 
-    release = forms.ModelChoiceField(Release.objects.all(), empty_label=None)
+    release = forms.ModelChoiceField(
+        Release.objects.all().order_by('-pk'), empty_label=None)
 
     threshold = forms.FloatField(
         initial=0.3,
