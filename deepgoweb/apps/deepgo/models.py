@@ -13,6 +13,7 @@ import uuid
 class Release(models.Model):
     version = models.CharField(max_length=15, unique=True)
     notes = models.TextField()
+    date = models.DateTimeField(default=timezone.now)
     data_root = models.FilePathField(path='data/', allow_files=False, allow_folders=True)
     alpha_bp = models.FloatField(
         default=0.59, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])

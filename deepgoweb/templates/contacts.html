@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static from staticfiles %}
+
+{% block content %}
+<div class="container">
+  <!-- contacts card -->
+  <h2>Contact us</h2>
+  <p>
+    DeepGOWeb is developed by <a target="_blank" href="https://cemse.kaust.edu.sa/borg">Bio-Ontology Research Group
+      (BORG)</a> at <a target="_blank" href="https://www.kaust.edu.sa"> KAUST.</a>
+    If you have any questions or suggestions feel free to contact us.
+  </p>
+  <div class="card card-default" id="card_contacts">
+    <div id="contacts" class="panel-collapse collapse show" aria-expanded="true" style="">
+      <ul class="list-group pull-down" id="contact-list">
+        <li class="list-group-item">
+          <div class="row w-100">
+            <div class="col-12 col-sm-6 col-md-3 px-0">
+              <img src="{% static "images/maxat-small.jpg" %}" alt="Maxat
+              Kulmanov" class="img-fluid rounded-circle d-block mx-auto">
+            </div>
+            <div class="col-12 col-sm-6 col-md-9 text-sm-left">
+              <span class="fa fa-envelope fa-lg text-danger float-right" title="left you a message"></span>
+              <span class="name lead"><a target="_blank"
+              href="https://cemse.kaust.edu.sa/borg/people/person/maxat-kulmanov">Maxat Kulmanov</a></span>
+              <br>
+              <span class="fa fa-map-marker fa-fw text-muted" data-toggle="tooltip" title="" data-original-title="4700 KAUST, Thuwal, Saudi Arabia"></span>
+              <span class="text-muted">4700 KAUST, Thuwal, Saudi Arabia</span>
+              <br>
+              <span class="fa fa-envelope fa-fw text-muted" data-toggle="tooltip" title="" data-original-title="maxat.kulmanov@kaust.edu.sa"></span>
+              <span class="text-muted small text-truncate">maxat.kulmanov@kaust.edu.sa</span>
+              <br>
+
+            </div>
+          </div>
+        </li>
+        <li class="list-group-item">
+          <div class="row w-100">
+            <div class="col-12 col-sm-6 col-md-3 px-0">
+              <img src="{% static "images/robert-small.jpg" %}" alt="Robert Hoehndorf" class="img-fluid rounded-circle d-block mx-auto">
+            </div>
+            <div class="col-12 col-sm-6 col-md-9 text-sm-left">
+              <span class="fa fa-envelope fa-lg text-danger float-right" title="left you a message"></span>
+              <span class="name lead"><a target="_blank" href="https://cemse.kaust.edu.sa/borg/people/person/robert-hoehndorf">Robert Hoehndorf</a></span>
+              <br>
+              <span class="fa fa-fw fa-map-marker fa-fw text-muted" data-toggle="tooltip" title="" data-original-title="4700 KAUST, Thuwal, Saudi Arabia"></span>
+              <span class="text-muted">4700 KAUST, Thuwal, Saudi Arabia</span>
+              <br>
+              <span class="fa fa-fw fa-envelope fa-fw text-muted" data-toggle="tooltip" title="" data-original-title="robert.hoehndorf@kaust.edu.sa"></span>
+              <span class="text-muted small text-truncate">robert.hoehndorf@kaust.edu.sa</span>
+
+            </div>
+          </div>
+        </li>
+      </ul>
+      <!--/contacts list-->
+    </div>
+  </div>
+</div>
+{% endblock %}

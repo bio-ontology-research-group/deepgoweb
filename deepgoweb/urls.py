@@ -28,6 +28,7 @@ urlpatterns = [
     path('deepgo/', include('deepgo.urls')),
     path('deepgo/api/', include('deepgo.rest_urls')),
     path('doc/', TemplateView.as_view(template_name='doc.html'), name='documentation'),
+    path('contacts', TemplateView.as_view(template_name="contacts.html"), name='contacts'),
     path('healthcheck', TemplateView.as_view(template_name="health.html")),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

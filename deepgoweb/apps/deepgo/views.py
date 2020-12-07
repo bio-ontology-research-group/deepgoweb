@@ -7,7 +7,7 @@ from deepgo.forms import PredictionForm
 from django.shortcuts import render
 from django.http import HttpResponse
 
-from deepgo.models import PredictionGroup
+from deepgo.models import PredictionGroup, Release
 from deepgoweb.mixins import ActionMixin
 import gzip
 from io import BytesIO
@@ -43,3 +43,13 @@ class PredictionDetailView(DetailView):
             *args, **kwargs)
         pg = context['object']
         return context
+
+
+class ReleaseListView(ListView):
+
+    template_name = 'deepgo/changelog.html'
+    model = Release
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(ReleaseListView, self).get_queryset(*args, **kwargs)
+        return queryset.order_by('-date')

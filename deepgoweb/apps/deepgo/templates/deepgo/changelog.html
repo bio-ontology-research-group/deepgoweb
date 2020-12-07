@@ -1,0 +1,21 @@
+{% extends 'deepgo/base.html' %}
+
+{% block head %}
+{% endblock %}
+{% block content %}
+{% for rel in object_list %}
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Version {{ rel.version }}</h3>
+    <p>Date: [{{ rel.date|date:"Y-m-d" }}]</p>
+  </div>
+  <div class="card-content">
+    <div class="card-body">
+      <div class="card-text">
+        {{ rel.notes|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
