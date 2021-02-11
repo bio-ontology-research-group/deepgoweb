@@ -53,9 +53,9 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
             seqs = lines
         else:
             info, seqs = read_fasta(lines)
-        if len(seqs) > 10:
+        if len(seqs) > 100:
             raise serializers.ValidationError(
-                'Number of sequences should not be more than 10!')
+                'Number of sequences should not be more than 100!')
         for seq in seqs:
             seq = seq.strip()
             if not is_ok(seq):
