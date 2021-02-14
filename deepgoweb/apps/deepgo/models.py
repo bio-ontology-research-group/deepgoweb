@@ -8,13 +8,16 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 from deepgo.constants import QUALIFIERS
 import uuid
+from django.conf import settings
 
+RELEASE_DATA_ROOT = getattr(settings, 'RELEASE_DATA_ROOT', 'data/')
 
 class Release(models.Model):
     version = models.CharField(max_length=15, unique=True)
     notes = models.TextField()
     date = models.DateTimeField(default=timezone.now)
-    data_root = models.FilePathField(path='data/', allow_files=False, allow_folders=True)
+    data_root = models.FilePathField(
+        path=RELEASE_DATA_ROOT, allow_files=False, allow_folders=True)
     alpha_bp = models.FloatField(
         default=0.59, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     alpha_mf = models.FloatField(
