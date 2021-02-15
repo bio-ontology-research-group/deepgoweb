@@ -1,4 +1,5 @@
 {% load static from staticfiles %}
+{% load cookielaw_tags %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -42,17 +43,21 @@
   </head>
 
   <body>
-
+    
     {% block navigation %}
       {% include "header.html" %}
     {% endblock %}
+    
+    
     <div class="container">
       <div class="content">
-      {% block content %}
-      {% endblock %}
+        {% cookielaw_banner %}
+        {% block content %}
+        {% endblock %}
       </div>
     </div><!-- /.container -->
 
+    
     <footer class="deepgo-footer">
       <p>DeepGOWeb by <a href="http://borg.kaust.edu.sa">BORG</a>.</p>
     </footer>
@@ -63,6 +68,7 @@
     <script src="{% static "yarn/jquery/dist/jquery.min.js" %}"></script>
     <script src="{% static "yarn/jquery-ui-dist/jquery-ui.min.js" %}"></script>
     <script src="{% static "yarn/bootstrap/dist/js/bootstrap.min.js" %}"></script>
+    <script src="{% static "cookielaw/js/cookielaw.js" %}"></script>
     {% block scripts %}
     {% endblock %}
   </body>

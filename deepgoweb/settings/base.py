@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'deepgo',
     'widget_tweaks',
     'rest_framework',
+    'cookielaw',
 ]
 
 MIDDLEWARE = [
