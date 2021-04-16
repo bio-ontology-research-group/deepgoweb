@@ -48,15 +48,15 @@ class PredictionDetailView(ActionMixin, DetailView):
     def on_download_csv(self, request, action, *args, **kwargs):
         pg = self.get_object()
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
+        response['Content-Disposition'] = 'attachment; filename="predictions.csv"'
 
         writer = csv.writer(response)
         for pred in pg.predictions.all():
             writer.writerow([pred.protein_info, ])
             for ont in pred.get_functions():
                 writer.writerow([ont['name'],])
-                for item in ont['functions']:
-                    writer.writerow(item)
+                for go_id, func, score in ont['functions']:
+                    writer.writerow([go_id, func, str(score)])
         return response
 
 
