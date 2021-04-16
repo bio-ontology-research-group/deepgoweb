@@ -45,7 +45,14 @@
 {% endfor %}
 <br/>
 <div class="row">
-  <a href="{% url 'api-predictions-get' object.uuid %}?format=json" class="btn btn-primary">JSON Format</a>
+  <a href="{% url 'api-predictions-get' object.uuid %}?format=json"
+     class="btn btn-primary">JSON Format</a>
+  <form action="{% url "prediction-detail" object.uuid %}"
+	method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="download_csv"/>
+    <button type="submit" class="btn btn-primary">CSV Format</button>
+  </form>
   <a href="{% url 'prediction' %}" class="btn btn-primary">New prediction</a>
 </div>
 {% endblock %}

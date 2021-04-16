@@ -97,6 +97,8 @@ class Prediction(models.Model):
             if self.scores[i] < self.group.threshold:
                 continue
             func = self.functions[i]
+            if go.is_root_term(func):
+                continue
             if go.has_term(func):
                 name = go.get(func)['name']
                 res[go.get(func)['namespace']].append(

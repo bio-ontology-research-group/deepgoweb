@@ -19,6 +19,11 @@ class Ontology(object):
     def has_term(self, term_id):
         return term_id in self.ont
 
+    def is_root_term(self, term_id):
+        return (term_id == BIOLOGICAL_PROCESS
+                or term_id == MOLECULAR_FUNCTION
+                or term_id == CELLULAR_COMPONENT)
+
     def calculate_ic(self, annots):
         cnt = Counter()
         for x in annots:

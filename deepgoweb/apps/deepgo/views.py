@@ -12,6 +12,7 @@ from deepgoweb.mixins import ActionMixin
 import gzip
 from io import BytesIO
 from django.utils import timezone
+import csv
 
 
 class SparqlFormView(TemplateView):
@@ -31,7 +32,7 @@ class PredictionCreateView(CreateView):
         return reverse('prediction-detail', kwargs={'uuid': self.object.uuid})
 
 
-class PredictionDetailView(DetailView):
+class PredictionDetailView(ActionMixin, DetailView):
 
     template_name = 'deepgo/view.html'
     model = PredictionGroup
@@ -43,6 +44,20 @@ class PredictionDetailView(DetailView):
             *args, **kwargs)
         pg = context['object']
         return context
+
+    def on_download_csv(self, request, action, *args, **kwargs):
+        pg = self.get_object()
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
+
+        writer = csv.writer(response)
+        for pred in pg.predictions.all():
+            writer.writerow([pred.protein_info, ])
+            for ont in pred.get_functions():
+                writer.writerow([ont['name'],])
+                for item in ont['functions']:
+                    writer.writerow(item)
+        return response
 
 
 class ReleaseListView(ListView):
