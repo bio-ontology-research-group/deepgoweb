@@ -6,7 +6,7 @@
   <div class="row">
     <div class="col-md-6 sequence">
       <p>
-      {% if pred.protein_info %}{{ pred.protein_info }} <br/> {% endif %} {{ pred.sequence }}
+      {% if pred.protein_info %}<strong>{{ pred.protein_info }}</strong> <br/> {% endif %} {{ pred.sequence }}
       </p>
       <h3>Set of similar protein sequences with experimental annotations</h3>
       <table class="table table-striped">
@@ -42,6 +42,7 @@
       </ul>
     </div>
   </div>
+  <hr>
 {% endfor %}
 <br/>
 <div class="row">
@@ -62,5 +63,10 @@
       prediction</a>
   </div>
   
+</div>
+<br>
+<div class="row">
+  <div class="col-md-12">Predictions are provided under
+  <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC-BY</a> License</div>
 </div>
 {% endblock %}

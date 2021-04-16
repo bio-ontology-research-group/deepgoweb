@@ -26,6 +26,7 @@ class PredictionCreateView(CreateView):
     def get_context_data(self, *args, **kwargs):
         context = super(PredictionCreateView, self).get_context_data(
             *args, **kwargs)
+        context['example_uuid'] = '9f0906ae-ed30-4003-8483-844dce56040d'
         return context
 
     def get_success_url(self):
