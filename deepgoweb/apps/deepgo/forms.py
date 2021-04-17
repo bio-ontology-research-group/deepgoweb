@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.safestring import mark_safe
 from deepgo.models import Prediction, PredictionGroup, Release
 import datetime
 from deepgo.tasks import predict_functions
@@ -12,7 +13,7 @@ class PredictionForm(forms.ModelForm):
 
     release = forms.ModelChoiceField(
         Release.objects.all().order_by('-pk'), empty_label=None,
-        label='Release version (see changelog)')
+        label=mark_safe('Release version (see <a href="/deepgo/changelog">changelog</a>)'))
 
     threshold = forms.FloatField(
         initial=0.3,
