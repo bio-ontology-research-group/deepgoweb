@@ -11,17 +11,24 @@ from deepgo.aminoacids import is_ok, MAXLEN
 class PredictionForm(forms.ModelForm):
 
     release = forms.ModelChoiceField(
-        Release.objects.all().order_by('-pk'), empty_label=None)
+        Release.objects.all().order_by('-pk'), empty_label=None,
+        label='Release version (see changelog)')
 
     threshold = forms.FloatField(
         initial=0.3,
         min_value=0.0, max_value=1.0,
-        widget=forms.NumberInput(attrs={'step':0.1}))
+        widget=forms.NumberInput(attrs={'step':0.1}),
+        label='Prediction threshold')
 
     class Meta:
         model = PredictionGroup
         fields = ['release', 'data_format', 'threshold', 'data']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['data'].label = 'Sequences'
+        self.fields['data_format'].label = 'Input Format (FASTA/Raw)'
+        
     def clean_data_format(self):
         data_format = self.cleaned_data['data_format']
         if data_format not in ('enter', 'fasta'):
