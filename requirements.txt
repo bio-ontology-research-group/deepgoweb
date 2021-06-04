@@ -10,7 +10,7 @@ cffi==1.14.4
 chardet==3.0.4
 cryptography==3.2.1
 defusedxml==0.6.0
-Django==2.2.18
+Django==2.2.21
 django-allauth==0.44.0
 django-appconf==1.0.4
 django-classy-tags==2.0.0
