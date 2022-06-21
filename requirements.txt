@@ -29,7 +29,7 @@ importlib-metadata==3.1.1
 Keras-Preprocessing==1.1.2
 kombu==4.6.11
 Markdown==3.3.3
-numpy==1.18.5
+numpy==1.22.0
 oauthlib==3.1.0
 opt-einsum==3.3.0
 pandas==1.1.4
