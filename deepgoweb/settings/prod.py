@@ -1,4 +1,4 @@
 from .base import *
 
-DEBUG = False
+DEBUG = True
 RELEASE_DATA_ROOT = '/opt-data/extracted/'
