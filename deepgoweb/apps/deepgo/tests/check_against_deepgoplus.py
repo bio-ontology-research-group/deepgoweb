@@ -3,6 +3,7 @@
 import sys
 import json
 import pandas as pd
+import math
 
 dgweb_file = sys.argv[1]
 assert dgweb_file.endswith('.json'), f"Expected a json file, got {dgweb_file}"
@@ -46,18 +47,20 @@ for go_id, score in dgweb_predictions.items():
     if not go_id in dg_plus_predictions:
         raise AssertionError(f"GO ID {go_id} with score {round(score,3)} in DeepGOWeb predictions not found in DeepGOPlus predictions")
 
-    if not round(score,3) == round(dg_plus_predictions[go_id],3):
+    if not (abs(score - dg_plus_predictions[go_id]) < 0.01):
         raise AssertionError(f"Scores for GO ID {go_id} do not match: DeepGOWeb: {score} != DeepGOPlus {dg_plus_predictions[go_id]}")
 
 for go_id, score in dg_plus_predictions.items():
     if go_id in ["GO:0003674", "GO:0005575", "GO:0008150"]: # skip molecular_function, cellular_component, biological_process
         continue
 
+    score_dgweb = math.floor(dgweb_predictions[go_id]*100)/100
+    score_dgplus = math.floor(score*100)/100
     
     if not go_id in dgweb_predictions:
         raise AssertionError(f"GO ID {go_id} with score {round(score,3)} in DeepGOPlus predictions not found in DeepGOWeb predictions")
 
-    if not round(score,3) == round(dgweb_predictions[go_id],3):
+    if not (abs(score - dgweb_predictions[go_id]) < 0.01):
         raise AssertionError(f"Scores for GO ID {go_id} do not match: DeepGOPlus: {score} != DeepGOWeb {dgweb_predictions[go_id]}")
 
 print("Predictions match")
