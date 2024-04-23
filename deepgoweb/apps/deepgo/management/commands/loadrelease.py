@@ -22,7 +22,7 @@ class Command(BaseCommand):
         version = options['version']
         version_path = ROOT + version
         if not os.path.exists(version_path):
-            raise CommandError('no such file')
+            raise CommandError('no such file', version_path)
 
         try:
             with open(version_path + "/RELEASE.html", "r") as f:

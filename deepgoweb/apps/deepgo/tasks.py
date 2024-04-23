@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
 from deepgo.aminoacids import MAXLEN, to_onehot
-from deepgo.utils import Ontology
+from deepgo.utils import Ontology, NAMESPACES
 import tensorflow as tf
 from subprocess import Popen, PIPE
 from deepgo.models import Release
@@ -31,8 +31,8 @@ def predict_functions(release_pk, sequences):
         releases[release_pk]['annotations'] = {}
         df = pd.read_pickle(f'{data_root}/train_data.pkl')
         annots_col = 'prop_annotations'
-        if annots_col not in df:
-            annots_col = 'annotations'
+        # if annots_col not in df:
+            # annots_col = 'annotations'
         for row in df.itertuples():
             releases[release_pk]['annotations'][row.proteins] = set(getattr(row, annots_col))
 
@@ -45,6 +45,8 @@ def predict_functions(release_pk, sequences):
     terms = releases[release_pk]['terms']
     annotations = releases[release_pk]['annotations']
     model = releases[release_pk]['model']
+
+    alphas = {NAMESPACES["mf"]: rel.alpha_mf, NAMESPACES["bp"]: rel.alpha_bp, NAMESPACES["cc"]: rel.alpha_cc}
     
     p = Popen(['diamond', 'blastp', '-d', f'{data_root}/train_data', '--more-sensitive',
                '--outfmt', '6', 'qseqid', 'sseqid', 'bitscore'], stdin=PIPE, stdout=PIPE)
@@ -86,7 +88,6 @@ def predict_functions(release_pk, sequences):
     deep_preds = {}
     ids, data = get_data(sequences)
     batch_size = 32
-    alpha = 0.5
     preds = model.predict(data, batch_size=batch_size)
     assert preds.shape[1] == len(terms)
     for i, prot_id in enumerate(ids):
@@ -107,12 +108,15 @@ def predict_functions(release_pk, sequences):
             sim_prots = mapping[prot_id]
         if prot_id in diamond_preds:
             for go_id, score in diamond_preds[prot_id].items():
-                annots[go_id] = score * alpha
+                annots[go_id] = score * alphas[go.get_namespace(go_id)]
+                # annots[go_id] = score * 0.5
         for go_id, score in deep_preds[prot_id].items():
             if go_id in annots:
-                annots[go_id] += (1 - alpha) * score
+                annots[go_id] += (1 - alphas[go.get_namespace(go_id)]) * score
+                # annots[go_id] += 0.5 * score
             else:
-                annots[go_id] = (1 - alpha) * score
+                annots[go_id] = (1 - alphas[go.get_namespace(go_id)]) * score
+                # annots[go_id] = 0.5 * score
         # Propagate scores with ontology structure
         gos = list(annots.keys())
         for go_id in gos:

@@ -1,0 +1,7 @@
+Django==2.2.18
+celery==4.4.7
+djago-allauth==0.44.0
+django-widget-tweaks==1.4.8
+djangorestframework==3.9.2
+django-cookie-law==2.0.5
+psycopg2-binary==2.9.9
