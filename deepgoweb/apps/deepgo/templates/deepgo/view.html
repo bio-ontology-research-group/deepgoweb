@@ -2,50 +2,90 @@
 {% load widget_tweaks %}
 
 {% block content %}
+
+<div class="dgw-results-head">
+  <h2>Prediction results</h2>
+  <p>
+    <span class="label label-primary">{{ object.get_model_name_display }}</span>
+    {% if object.model_name == 'dgpp-light' and object.use_cnn %}
+    <span class="label label-info">+ CNN (orphan coverage)</span>
+    {% endif %}
+    <span class="text-muted">threshold {{ object.threshold }}</span>
+  </p>
+</div>
+
 {% for pred in object.predictions.all %}
-  <div class="row">
-    <div class="col-md-6 sequence">
-      <p>
-      {% if pred.protein_info %}{{ pred.protein_info }} <br/> {% endif %} {{ pred.sequence }}
-      </p>
-      <h3>Set of similar protein sequences with experimental annotations</h3>
-      <table class="table table-striped">
-        <thead><th>Protein</th><th>Bitscore</th></thead>
-        <tbody>
-          {% for prot_id, score in pred.get_similar_proteins %}
-          <tr>
-            <td><a href="https://www.uniprot.org/uniprot/{{ prot_id }}"
-                   target="blank">{{ prot_id }}</a></td>
-            <td>{{ score }}</td>
+<div class="panel panel-default dgw-pred">
+  <div class="panel-heading dgw-pred-head">
+    {% if pred.protein_info %}{{ pred.protein_info }}{% else %}Sequence {{ forloop.counter }}{% endif %}
+  </div>
+  <div class="panel-body">
+    <div class="row">
+      <div class="col-md-5 sequence">
+        <p class="dgw-seq">{{ pred.sequence }}</p>
+        <h4>Similar proteins with experimental annotations</h4>
+        {% if pred.similar_proteins %}
+        <table class="table table-striped table-condensed">
+          <thead><tr><th>Protein</th><th>Bitscore</th></tr></thead>
+          <tbody>
+            {% for prot_id, score in pred.get_similar_proteins %}
+            <tr>
+              <td><a href="https://www.uniprot.org/uniprot/{{ prot_id }}"
+                     target="blank">{{ prot_id }}</a></td>
+              <td>{{ score }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No significant homologs found.</p>
+        {% endif %}
+      </div>
+      <div class="col-md-7">
+        {% if pred.scores %}
+        {% for ont in pred.get_functions %}
+        <div class="dgw-aspect">
+          <h4>{{ ont.name }}</h4>
+          {% if ont.functions %}
+          <table class="table table-condensed dgw-go-table">
+            <tbody>
+              {% for func in ont.functions %}
+              <tr>
+                <td class="dgw-go-id">
+                  <a href="http://amigo.geneontology.org/amigo/term/{{ func.0 }}"
+                     target="blank">{{ func.0 }}</a>
+                </td>
+                <td class="dgw-go-name">{{ func.1 }}</td>
+                <td class="dgw-go-score">
+                  <span class="dgw-score-bar" style="width: {% widthratio func.2 1 100 %}%"></span>
+                  <span class="dgw-score-val">{{ func.2|floatformat:3 }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted">No predictions above the threshold.</p>
+          {% endif %}
+        </div>
         {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <div class="col-md-6">
-      <ul class="list">
-	{% if pred.scores %}
-	{% for ont in pred.get_functions %}
-	<li> {{ ont.name }}
-	  <ul class="list">
-	    {% for func in ont.functions %}
-	    <li> <a href="http://amigo.geneontology.org/amigo/term/{{ func.0 }}" target="blank">
-                {{ func.0 }} </a> - {{ func.1 }} - {{ func.2|floatformat:3 }}</li>
-	    {% endfor %}
-	  </ul>
-	</li>
-	{% endfor %}
-	{% else %}
-	  {% for function in pred.function_names %}
-            <li>{{ function.0 }} - {{ function.1 }}</li>
-	  {% endfor %}
-	{% endif %}
-      </ul>
+        {% else %}
+        <ul class="list">
+          {% for function in pred.function_names %}
+          <li>{{ function.0 }} - {{ function.1 }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
     </div>
   </div>
+</div>
 {% endfor %}
-<br/>
-<div class="row">
-  <a href="{% url 'api-predictions-get' object.uuid %}?format=json" class="btn btn-primary">JSON Format</a>
-  <a href="{% url 'prediction' %}" class="btn btn-primary">New prediction</a>
+
+<div class="dgw-result-actions">
+  <a href="{% url 'api-predictions-get' object.uuid %}?format=json" class="btn btn-default">
+    <i class="fas fa-code"></i> JSON</a>
+  <a href="{% url 'prediction' %}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> New prediction</a>
 </div>
 {% endblock %}

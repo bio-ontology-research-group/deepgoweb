@@ -196,3 +196,26 @@ CELERY_IGNORE_RESULT = True
 CELERY_SEND_TASK_ERROR_EMAILS = False
 CELERY_TASK_RESULT_EXPIRES = 600
 
+# DeepGO-PlusPlus-Light: the optional strictly-CPU predictor (DIAMOND BLAST-KNN +
+# homology-bridged STRING Net-KNN, see apps/deepgo/dgpp/).  It is served from the same
+# warm Celery worker as DeepGOPlus.  The model JSONs ship in the repo; the large data
+# assets (DIAMOND DB + precomputed bridge index + GO DAG/obo + train labels) are built
+# once with gspa's deepgo-plusplus/service/make_assets.sh and dropped under ASSETS.
+# When ENABLED is False or the asset bundle is absent, the model is hidden from the UI
+# and the API rejects it — DeepGOPlus is unaffected.
+DGPP_LIGHT = {
+    'ENABLED': os.environ.get('DGPP_ENABLED', '1') == '1',
+    'ASSETS': os.environ.get(
+        'DGPP_ASSETS', os.path.join(os.path.dirname(BASE_DIR), 'data', 'dgpp')),
+    'MODELS': os.environ.get('DGPP_MODELS', ''),   # '' -> bundled apps/deepgo/dgpp/models
+    'DIAMOND': os.environ.get('DGPP_DIAMOND', 'diamond'),
+    'THREADS': int(os.environ.get('DGPP_THREADS', '8')),
+    # Opt-in extras; each stays hidden unless its tool/weights are configured AND present.
+    'INTERPROSCAN': os.environ.get('DGPP_INTERPROSCAN', ''),   # path to interproscan.sh
+    'CNN_MODEL': os.environ.get('DGPP_CNN_MODEL', ''),         # path to cnn_model.pt
+}
+
+# Cache predictions (sequence + model) so repeat queries skip DIAMOND entirely — a
+# cheap win on top of DeepGOWeb's warm-worker design.  Seconds; 0 disables.
+PREDICTION_CACHE_TTL = int(os.environ.get('PREDICTION_CACHE_TTL', str(60 * 60 * 24)))
+

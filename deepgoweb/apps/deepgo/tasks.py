@@ -14,6 +14,38 @@ annotations = None
 model = None
 terms = None
 
+# DeepGO-PlusPlus-Light is warm-loaded once per worker process, exactly like the
+# DeepGOPlus model/ontology globals above — the loaded predictor (DIAMOND DB + the
+# 205 MB precomputed bridge index) stays resident and is reused across tasks.
+dgpp_predictor = None
+
+
+@task
+def predict_functions_dgpp(sequences, use_cnn=False):
+    """DeepGO-PlusPlus-Light predictions, in the same output shape as
+    ``predict_functions``: ``list[(annots {go_id->score}, sim_prots {prot->bitscore})]``
+    so the rest of the pipeline (web view, REST API, SPARQL endpoint) is unchanged."""
+    global dgpp_predictor
+    if dgpp_predictor is None:
+        from django.conf import settings
+        from deepgo.dgpp import build_predictor
+        dgpp_predictor = build_predictor(settings.DGPP_LIGHT)
+
+    # Honour use_cnn only if the weights and the cnn model are actually available.
+    cnn = (bool(use_cnn) and dgpp_predictor.cnn_model is not None
+           and (False, True) in dgpp_predictor.models)
+    fasta = ''.join('>%d\n%s\n' % (i, seq) for i, seq in enumerate(sequences))
+    results, homologs = dgpp_predictor.predict_full(
+        fasta, cnn=cnn, min_score=0.01, topk=5)
+
+    out = []
+    for i in range(len(sequences)):
+        key = str(i)
+        annots = {p['term']: p['score'] for p in results.get(key, [])}
+        sim = {h: b for h, b in homologs.get(key, [])}
+        out.append((annots, sim))
+    return out
+
 @task
 def predict_functions(sequences):
     global annotations

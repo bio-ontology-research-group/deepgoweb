@@ -4,7 +4,7 @@ from deepgo.utils import (
     read_fasta)
 from deepgo.aminoacids import is_ok, MAXLEN
 import datetime
-from deepgo.tasks import predict_functions
+from deepgo import runner
 
 
 class TaxonomySerializer(serializers.ModelSerializer):
@@ -31,15 +31,24 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PredictionGroup
-        fields = ['uuid', 'data_format', 'data', 'threshold', 'predictions']
+        fields = ['uuid', 'data_format', 'model_name', 'use_cnn', 'data',
+                  'threshold', 'predictions']
         extra_kwargs = {
-            'data': {'write_only': True}}
+            'data': {'write_only': True},
+            'model_name': {'required': False},
+            'use_cnn': {'required': False}}
 
     def validate(self, data):
         if 'data_format' not in data:
             raise serializers.ValidationError(
                 'data_format field is required!'
             )
+
+        model_name = data.get('model_name', runner.DEEPGOPLUS)
+        if model_name == runner.DGPP_LIGHT and not runner.dgpp_enabled():
+            raise serializers.ValidationError(
+                'Model "dgpp-light" (DeepGO-PlusPlus-Light) is not available '
+                'on this server.')
 
         fmt = data['data_format']
         if fmt not in ('enter', 'fasta'):
@@ -65,6 +74,9 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         self.instance = super(PredictionGroupSerializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
+        model_name = self.validated_data.get('model_name', runner.DEEPGOPLUS)
+        use_cnn = (model_name == runner.DGPP_LIGHT
+                   and self.validated_data.get('use_cnn', False))
         lines = data.splitlines()
         if fmt == 'enter':
             sequences = lines
@@ -73,9 +85,7 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         n = len(sequences)
         for i in range(n):
             sequences[i] = sequences[i].strip()
-        preds = predict_functions.delay(
-            sequences)
-        preds = preds.get()
+        preds = runner.run_predictions(sequences, model_name, use_cnn)
         self.instance.save()
         predictions = list()
         for i in range(n):

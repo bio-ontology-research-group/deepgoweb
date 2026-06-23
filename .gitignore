@@ -3,6 +3,9 @@ venv/
 deepgoweb/media
 deepgoweb/public
 models/
+# …but the small bundled DeepGO-PlusPlus-Light integrator JSONs are part of the source.
+!deepgoweb/apps/deepgo/dgpp/models/
+!deepgoweb/apps/deepgo/dgpp/models/*.json
 data/
 data-*/
 *.gz

@@ -1,12 +1,12 @@
 from django import forms
 from deepgo.models import Prediction, PredictionGroup
 import datetime
-from deepgo.tasks import predict_functions
 from django.core.exceptions import ValidationError
 from deepgo.utils import (
     read_fasta)
 from deepgo.aminoacids import is_ok, MAXLEN
 from deepgo.models import Taxonomy
+from deepgo import runner
 
 
 class PredictionForm(forms.ModelForm):
@@ -15,10 +15,24 @@ class PredictionForm(forms.ModelForm):
         initial=0.3,
         min_value=0.0, max_value=1.0,
         widget=forms.NumberInput(attrs={'step':0.1}))
+    model_name = forms.ChoiceField(
+        label='Prediction model', initial='deepgoplus',
+        widget=forms.RadioSelect)
+    use_cnn = forms.BooleanField(
+        label='Add CNN component for orphan proteins (no homolog)',
+        required=False, initial=False)
 
     class Meta:
         model = PredictionGroup
-        fields = ['data_format', 'threshold', 'data']
+        fields = ['model_name', 'use_cnn', 'data_format', 'threshold', 'data']
+
+    def __init__(self, *args, **kwargs):
+        super(PredictionForm, self).__init__(*args, **kwargs)
+        # Only offer DeepGO-PlusPlus-Light when it is enabled and its assets exist.
+        choices = [PredictionGroup.MODEL_CHOICES[0]]
+        if runner.dgpp_enabled():
+            choices.append(PredictionGroup.MODEL_CHOICES[1])
+        self.fields['model_name'].choices = choices
 
     def clean_data_format(self):
         data_format = self.cleaned_data['data_format']
@@ -50,6 +64,9 @@ class PredictionForm(forms.ModelForm):
         data = self.cleaned_data['data']
         lines = data.splitlines()
         fmt = self.cleaned_data['data_format']
+        model_name = self.cleaned_data.get('model_name', runner.DEEPGOPLUS)
+        use_cnn = (model_name == runner.DGPP_LIGHT
+                   and self.cleaned_data.get('use_cnn', False))
         if fmt == 'enter':
             sequences = lines
         else:
@@ -57,9 +74,7 @@ class PredictionForm(forms.ModelForm):
         n = len(sequences)
         for i in range(n):
             sequences[i] = sequences[i].strip()
-        preds = predict_functions.delay(
-            sequences)
-        preds = preds.get()
+        preds = runner.run_predictions(sequences, model_name, use_cnn)
         self.instance.save()
         predictions = list()
         for i in range(n):

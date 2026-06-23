@@ -16,11 +16,24 @@ class PredictionGroup(models.Model):
         ('enter', 'Raw Sequence'),
         ('fasta', 'FASTA'))
 
+    # Which predictor to run. 'deepgoplus' is the original CNN + DIAMOND model;
+    # 'dgpp-light' is DeepGO-PlusPlus-Light (DIAMOND BLAST-KNN + STRING-bridge Net-KNN).
+    MODEL_CHOICES = (
+        ('deepgoplus', 'DeepGOPlus (CNN + DIAMOND)'),
+        ('dgpp-light', 'DeepGO-PlusPlus-Light (DIAMOND + STRING bridge)'))
+
     data = models.TextField()
     data_format = models.CharField(
         max_length=10,
         choices=DATA_FORMAT_CHOICES,
         default='fasta')
+    model_name = models.CharField(
+        max_length=20,
+        choices=MODEL_CHOICES,
+        default='deepgoplus')
+    # DeepGO-PlusPlus-Light only: add the CPU 1D-CNN component for orphan proteins
+    # with no homolog (ignored unless the model is dgpp-light and weights are present).
+    use_cnn = models.BooleanField(default=False)
     user = models.ForeignKey(
         User, related_name='prediction_groups', null=True,
         on_delete=models.SET_NULL)

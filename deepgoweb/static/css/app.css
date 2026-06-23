@@ -68,3 +68,68 @@ body {
 .deepgo-footer p:last-child {
   margin-bottom: 0;
 }
+
+/* ---- DeepGO-PlusPlus-Light redesign (dgw-*) ---- */
+.dgw-hero {
+    padding: 20px 0 10px;
+    border-bottom: 1px solid #e5e5e5;
+    margin-bottom: 25px;
+}
+.dgw-hero h1 { margin-top: 0; }
+.dgw-hero h1 small { color: #888; font-size: 60%; }
+.dgw-hero .lead { margin-bottom: 12px; }
+
+.dgw-form .panel-heading { font-weight: bold; }
+.dgw-step {
+    display: inline-block;
+    width: 22px; height: 22px; line-height: 22px;
+    text-align: center; border-radius: 50%;
+    background-color: #428bca; color: #fff;
+    font-size: 13px; margin-right: 6px;
+}
+
+/* model selection cards */
+.dgw-models { display: flex; flex-wrap: wrap; margin: -8px; }
+.dgw-model {
+    flex: 1 1 280px;
+    display: flex; align-items: flex-start;
+    margin: 8px; padding: 14px;
+    border: 1px solid #ddd; border-radius: 6px;
+    background: #fff; cursor: pointer; font-weight: normal;
+    transition: border-color .15s, box-shadow .15s;
+}
+.dgw-model:hover { border-color: #9cbfda; }
+.dgw-model-active {
+    border-color: #428bca;
+    box-shadow: 0 0 0 1px #428bca inset;
+    background: #f5f9fd;
+}
+.dgw-model-radio { margin-right: 10px; padding-top: 2px; }
+.dgw-model-title { display: block; font-weight: bold; margin-bottom: 4px; }
+.dgw-model-desc { display: block; color: #666; font-size: 13px; line-height: 1.4; }
+.dgw-suboption { margin-top: 12px; padding-left: 4px; }
+
+.dgw-examples { margin-top: 8px; color: #555; }
+
+/* results */
+.dgw-results-head { margin-bottom: 18px; }
+.dgw-pred-head { font-weight: bold; word-wrap: break-word; }
+.dgw-seq {
+    word-wrap: break-word; font-family: monospace; font-size: 12px;
+    color: #555; max-height: 140px; overflow: auto;
+    background: #f7f7f7; padding: 8px; border-radius: 4px;
+}
+.dgw-aspect { margin-bottom: 18px; }
+.dgw-aspect h4 {
+    border-bottom: 2px solid #428bca; padding-bottom: 4px; color: #2a6496;
+}
+.dgw-go-table td { vertical-align: middle; }
+.dgw-go-id { white-space: nowrap; }
+.dgw-go-name { color: #333; }
+.dgw-go-score { width: 130px; position: relative; }
+.dgw-score-bar {
+    display: inline-block; height: 10px; background: #428bca;
+    border-radius: 2px; vertical-align: middle; max-width: 90px;
+}
+.dgw-score-val { font-size: 12px; color: #555; margin-left: 6px; }
+.dgw-result-actions { margin-top: 10px; }

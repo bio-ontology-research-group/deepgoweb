@@ -3,91 +3,121 @@
 
 {% block content %}
 
-<div class="row">
-  <div class="col-md-12">
-    <h1>DeepGOWeb Protein Function prediction webserver</h1> <br/>
-    <p>DeepGOWeb is a webserverice for predicting protein functions
-      based on protein sequence using
-      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
-        DeepGOPlus</a> method.
-      It uses deep convolutional neural networks to learn sequence
-      features and combines predictions with sequence similarity
-      based predictions.
-    </p>
-    <p>The tool only needs protein sequence as an input. The source
-      code of the model is available on
-      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
-	GitHub repository</a>
-    </p>
-    <p>The <a href="{% url "api-predictions-create" %}">REST API</a> is
-    available for submitting sequences programmatically.
-    </p>
-    <p>We also provide a <a href="{% url "sparql" %}">SPARQL</a>
-      endpoint for calling our predictor in SPARQL queries.
-    </p>
-    <p>
-      Input data:
-      <ul>
-        <li>Format: <strong>FASTA</strong> format or <strong>Raw
-        Sequences</strong> separated by a newline</li>
-        <li>Threshold: a value between 0.1 and 1.0 for filtering
-          predictions by the confidence score of the model</li>
-        <li>Data: Protein sequences in selected format</li>
-      </ul>
-    </p>
-    <br/>
-    <p style='color:red;'>
-      The number of sequences in one query should not exceed 10!</p>
-  </div>
+<div class="dgw-hero">
+  <h1>DeepGOWeb <small>Protein Function Prediction</small></h1>
+  <p class="lead">Predict Gene Ontology (GO) functions from an amino-acid
+    sequence. Choose a model, paste up to 10 sequences, and submit.</p>
+  <p>
+    <a class="btn btn-default btn-sm" href="{% url "api-predictions-create" %}">
+      <i class="fas fa-code"></i> REST API</a>
+    <a class="btn btn-default btn-sm" href="{% url "sparql" %}">
+      <i class="fas fa-database"></i> SPARQL endpoint</a>
+    <a class="btn btn-default btn-sm"
+       href="https://github.com/bio-ontology-research-group/deepgoplus" target="_blank">
+      <i class="fab fa-github"></i> Source code</a>
+  </p>
 </div>
-<div class="row">
-  <div class="col-md-12">
-    Examples:
-    <ul>
-      <li><a class="prot_link" id="P80386" href="#">AAKB1 (P80386) - FASTA</a></li>
-      <li><a class="prot_link" id="Q14738" href="#">PPP2R5D (Q14738) - Raw sequence</a></li>
-    </ul>
 
-    <p id="P80386_seq" class="deepgo-sequence" data-format="fasta">>sp|P80386|AAKB1_RAT 5'-AMP-activated protein kinase subunit beta-1 OS=Rattus norvegicus GN=Prkab1 PE=1 SV=4
+<form class="form dgw-form" method="post">
+  {% csrf_token %}
+
+  <div class="panel panel-default">
+    <div class="panel-heading"><span class="dgw-step">1</span> Prediction model</div>
+    <div class="panel-body">
+      <div class="dgw-models">
+        {% for radio in form.model_name %}
+        <label class="dgw-model" for="{{ radio.id_for_label }}">
+          <span class="dgw-model-radio">{{ radio.tag }}</span>
+          <span class="dgw-model-body">
+            <span class="dgw-model-title">{{ radio.choice_label }}</span>
+            {% if radio.data.value == 'dgpp-light' %}
+            <span class="dgw-model-desc">
+              No GPU needed. DIAMOND BLAST-KNN combined with a homology-bridged
+              STRING Net-KNN, so it predicts functions even for proteins that are
+              <em>not</em> in STRING — the realistic novel-protein case. Cover
+              orphan proteins with the optional CNN component below.</span>
+            {% else %}
+            <span class="dgw-model-desc">
+              The original model: a deep 1D convolutional network over the sequence
+              combined with DIAMOND sequence-similarity transfer.</span>
+            {% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {{ form.model_name.errors }}
+      <div id="dgw-cnn-opt" class="checkbox dgw-suboption">
+        <label>{{ form.use_cnn }} {{ form.use_cnn.label }}</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading"><span class="dgw-step">2</span> Input</div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="form-group col-sm-6">
+          <label for="id_data_format">Format</label>
+          {% render_field form.data_format class+="form-control" %}
+          <p class="help-block">FASTA, or raw sequences one per line.</p>
+        </div>
+        <div class="form-group col-sm-6">
+          <label for="id_threshold">Score threshold</label>
+          {% render_field form.threshold class+="form-control" %}
+          <p class="help-block">Hide predictions below this confidence (0.0–1.0).</p>
+        </div>
+      </div>
+      <div class="form-group {% if form.data.errors %}has-error{% endif %}">
+        <label for="id_data">Protein sequences</label>
+        {% render_field form.data class+="form-control" rows="9" placeholder="Paste FASTA or raw sequences here…" %}
+        {{ form.data.errors }}
+        <p class="help-block">At most 10 sequences per query.</p>
+      </div>
+
+      <p class="dgw-examples">Examples:
+        <a class="prot_link" id="P80386" href="#">AAKB1 (P80386) — FASTA</a> ·
+        <a class="prot_link" id="Q14738" href="#">PPP2R5D (Q14738) — raw sequence</a>
+      </p>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg">
+    <i class="fas fa-play"></i> Predict functions</button>
+</form>
+
+<p id="P80386_seq" class="deepgo-sequence" data-format="fasta">>sp|P80386|AAKB1_RAT 5'-AMP-activated protein kinase subunit beta-1 OS=Rattus norvegicus GN=Prkab1 PE=1 SV=4
 MGNTSSERAALERQAGHKTPRRDSSGGTKDGDRPKILMDSPEDADIFHTEEMKAPEKEEF
 LAWQHDLEVNEKAPAQARPTVFRWTGGGKEVYLSGSFNNWSKLPLTRSQNNFVAILDLPE
 GEHQYKFFVDGQWTHDPSEPIVTSQLGTVNNIIQVKKTDFEVFDALMVDSQKCSDVSELS
 SSPPGPYHQEPYISKPEERFKAPPILPPHLLQVILNKDTGISCDPALLPEPNHVMLNHLY
 ALSIKDGVMVLSATHRYKKKYVTTLLYKPI</p>
-    <br/>
 
-    <p id="Q14738_seq" class="deepgo-sequence" data-format="enter">MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL</p>
-</div>
-<div class="row">
-  <div class="col-md-12">
-    <form class="form" method="post">
-      {% csrf_token %}
-      {% for field in form %}
-      <div class="form-group {% if field.errors %}has-error{% endif %}">
-        {% render_field field class+="form-control" placeholder=field.label %}
-        {{ field.errors }}
-      </div>
-      {% endfor %}
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
-  </div>
-</div>
-
+<p id="Q14738_seq" class="deepgo-sequence" data-format="enter">MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL</p>
 
 {% endblock %}
 
 {% block scripts %}
 <script type="text/javascript">
   $(function() {
+    // Load example sequences into the form.
     $('.prot_link').click(function(e) {
       e.preventDefault();
       var prot_id = e.currentTarget.id + '_seq';
       var format = $('#' + prot_id).data().format;
       var sequence = $('#' + prot_id).text();
-      console.log(format);
-      $('#id_data').text(sequence);
-      $('#id_data_format option[value=' + format + ']').prop('selected', true);
+      $('#id_data').val(sequence);
+      $('#id_data_format').val(format);
     });
+
+    // Show the CNN option (and highlight the card) only for DeepGO-PlusPlus-Light.
+    function syncModel() {
+      var val = $('input[name=model_name]:checked').val();
+      $('#dgw-cnn-opt').toggle(val === 'dgpp-light');
+      $('.dgw-model').removeClass('dgw-model-active');
+      $('input[name=model_name]:checked').closest('.dgw-model').addClass('dgw-model-active');
+    }
+    $('input[name=model_name]').on('change', syncModel);
+    syncModel();
   });
 </script>
 {% endblock %}
