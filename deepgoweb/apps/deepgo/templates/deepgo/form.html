@@ -36,6 +36,12 @@
               STRING Net-KNN, so it predicts functions even for proteins that are
               <em>not</em> in STRING — the realistic novel-protein case. Cover
               orphan proteins with the optional CNN component below.</span>
+            {% elif radio.data.value == 'dgpp-light-mcm' %}
+            <span class="dgw-model-desc">
+              No GPU needed. The same CPU model, with a <em>hierarchy-aware</em> CNN
+              component for orphan proteins — trained with a true-path (is_a + part_of)
+              constraint over the GO DAG, which improves the orphan-protein signal.
+              The CNN is always on for this model.</span>
             {% else %}
             <span class="dgw-model-desc">
               The original model: a deep 1D convolutional network over the sequence

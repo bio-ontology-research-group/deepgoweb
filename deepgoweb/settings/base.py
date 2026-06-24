@@ -212,7 +212,10 @@ DGPP_LIGHT = {
     'THREADS': int(os.environ.get('DGPP_THREADS', '8')),
     # Opt-in extras; each stays hidden unless its tool/weights are configured AND present.
     'INTERPROSCAN': os.environ.get('DGPP_INTERPROSCAN', ''),   # path to interproscan.sh
-    'CNN_MODEL': os.environ.get('DGPP_CNN_MODEL', ''),         # path to cnn_model.pt
+    'CNN_MODEL': os.environ.get('DGPP_CNN_MODEL', ''),         # path to cnn_model.pt (bce CNN)
+    # Hierarchy-aware (C-HMCNN) CNN weights for the 'dgpp-light-mcm' model variant;
+    # '' -> ASSETS/cnn_mcm.pt, else the bundled apps/deepgo/dgpp/models/cnn_mcm.pt.
+    'CNN_MODEL_MCM': os.environ.get('DGPP_CNN_MODEL_MCM', ''),
 }
 
 # Cache predictions (sequence + model) so repeat queries skip DIAMOND entirely — a

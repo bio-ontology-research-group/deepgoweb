@@ -6,6 +6,8 @@ models/
 # …but the small bundled DeepGO-PlusPlus-Light integrator JSONs are part of the source.
 !deepgoweb/apps/deepgo/dgpp/models/
 !deepgoweb/apps/deepgo/dgpp/models/*.json
+# Trained CNN weights are large deployment assets (dropped under ASSETS), not source.
+*.pt
 data/
 data-*/
 *.gz

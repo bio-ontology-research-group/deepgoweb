@@ -28,10 +28,13 @@ class PredictionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(PredictionForm, self).__init__(*args, **kwargs)
-        # Only offer DeepGO-PlusPlus-Light when it is enabled and its assets exist.
+        # Only offer the DeepGO-PlusPlus-Light variants when enabled and their assets exist.
+        # MODEL_CHOICES = (deepgoplus, dgpp-light, dgpp-light-mcm).
         choices = [PredictionGroup.MODEL_CHOICES[0]]
         if runner.dgpp_enabled():
             choices.append(PredictionGroup.MODEL_CHOICES[1])
+        if runner.dgpp_mcm_enabled():
+            choices.append(PredictionGroup.MODEL_CHOICES[2])
         self.fields['model_name'].choices = choices
 
     def clean_data_format(self):

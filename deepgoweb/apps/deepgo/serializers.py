@@ -49,6 +49,10 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Model "dgpp-light" (DeepGO-PlusPlus-Light) is not available '
                 'on this server.')
+        if model_name == runner.DGPP_LIGHT_MCM and not runner.dgpp_mcm_enabled():
+            raise serializers.ValidationError(
+                'Model "dgpp-light-mcm" (DeepGO-PlusPlus-Light, hierarchy-aware CNN) '
+                'is not available on this server.')
 
         fmt = data['data_format']
         if fmt not in ('enter', 'fasta'):

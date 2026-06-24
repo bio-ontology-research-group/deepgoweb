@@ -17,17 +17,28 @@ public class Functions {
     public static final String NAMESPACE = "http://deepgoplus.bio2vec.net/";
     
     public static ArrayList<String[]> deepgo(String sequence, double threshold) {
-        return deepgo("latest", sequence, threshold);
+        return deepgo("latest", sequence, threshold, null);
     }
-    
+
     public static ArrayList<String[]> deepgo(String version, String sequence, double threshold) {
+        return deepgo(version, sequence, threshold, null);
+    }
+
+    // model selects the predictor exposed by the REST API: null/"" -> server default
+    // (deepgoplus); "dgpp-light" -> DeepGO-PlusPlus-Light; "dgpp-light-mcm" -> the
+    // hierarchy-aware (C-HMCNN) CPU variant. Sent as the API's "model_name" field.
+    public static ArrayList<String[]> deepgo(String version, String sequence,
+                                             double threshold, String model) {
 	ArrayList<String[]> result = new ArrayList<String[]>();
-	String query = new JSONObject()
+	JSONObject queryObj = new JSONObject()
             .put("version", version)
 	    .put("data_format", "enter")
 	    .put("data", sequence)
-	    .put("threshold", threshold)
-	    .toString();
+	    .put("threshold", threshold);
+	if (model != null && !model.isEmpty()) {
+	    queryObj.put("model_name", model);
+	}
+	String query = queryObj.toString();
 	
 	JSONObject obj = queryAPI(query);	
 	if (obj == null) {

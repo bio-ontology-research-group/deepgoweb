@@ -55,10 +55,11 @@ public class deepGO extends PFuncListAndList {
 		"Subject list must contain exactly 3 variables, " +
 		"GO subontology, GO IRI, label, score");
 	
-	if (argObject.getArgListSize() != 2)
+	int objSize = argObject.getArgListSize();
+	if (objSize != 2 && objSize != 3)
             throw new QueryBuildException(
-		"Object list must contain exactly two arguments, " +
-		"sequence and threshold");
+		"Object list must contain two or three arguments: " +
+		"sequence, threshold[, model] (model = 'dgpp-light-mcm' etc.)");
 	        
     }
 
@@ -71,7 +72,12 @@ public class deepGO extends PFuncListAndList {
 	String sequence = object.getArg(0).toString().replace("\"", "");
 	double threshold = Double.parseDouble(
 	    object.getArg(1).getLiteralLexicalForm().toString());
-	ArrayList<String[]> arr = Functions.deepgo(sequence, threshold);
+	// optional 3rd object arg selects the model (e.g. "dgpp-light-mcm")
+	String model = null;
+	if (object.getArgListSize() == 3) {
+	    model = object.getArg(2).getLiteralLexicalForm().toString();
+	}
+	ArrayList<String[]> arr = Functions.deepgo("latest", sequence, threshold, model);
 	if (arr.size() == 0) {
 	    return IterLib.noResults(execCxt);
 	}

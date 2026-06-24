@@ -17,10 +17,13 @@ class PredictionGroup(models.Model):
         ('fasta', 'FASTA'))
 
     # Which predictor to run. 'deepgoplus' is the original CNN + DIAMOND model;
-    # 'dgpp-light' is DeepGO-PlusPlus-Light (DIAMOND BLAST-KNN + STRING-bridge Net-KNN).
+    # 'dgpp-light' is DeepGO-PlusPlus-Light (DIAMOND BLAST-KNN + STRING-bridge Net-KNN);
+    # 'dgpp-light-mcm' is the same CPU model with the hierarchy-aware (C-HMCNN, is_a+part_of)
+    # CNN component — an alternative to the running version (see apps/deepgo/dgpp/).
     MODEL_CHOICES = (
         ('deepgoplus', 'DeepGOPlus (CNN + DIAMOND)'),
-        ('dgpp-light', 'DeepGO-PlusPlus-Light (DIAMOND + STRING bridge)'))
+        ('dgpp-light', 'DeepGO-PlusPlus-Light (DIAMOND + STRING bridge)'),
+        ('dgpp-light-mcm', 'DeepGO-PlusPlus-Light, hierarchy-aware CNN (CPU)'))
 
     data = models.TextField()
     data_format = models.CharField(

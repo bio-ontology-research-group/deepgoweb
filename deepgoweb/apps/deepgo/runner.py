@@ -22,6 +22,7 @@ from django.core.cache import cache
 from deepgo.tasks import predict_functions, predict_functions_dgpp
 
 DGPP_LIGHT = 'dgpp-light'
+DGPP_LIGHT_MCM = 'dgpp-light-mcm'
 DEEPGOPLUS = 'deepgoplus'
 
 
@@ -34,6 +35,20 @@ def dgpp_enabled():
     # The DIAMOND DB is the one indispensable asset; if it is missing the model
     # cannot run, so hide it rather than fail at request time.
     return os.path.exists(os.path.join(cfg['ASSETS'], 'train_db.dmnd'))
+
+
+def dgpp_mcm_enabled():
+    """True iff the hierarchy-aware (MCM) variant can run: the Light assets are present
+    AND the MCM CNN weights resolve (the variant's whole point is the CNN component)."""
+    import os
+    if not dgpp_enabled():
+        return False
+    cfg = settings.DGPP_LIGHT
+    candidates = [cfg.get('CNN_MODEL_MCM'),
+                  os.path.join(cfg['ASSETS'], 'cnn_mcm.pt'),
+                  os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               'dgpp', 'models', 'cnn_mcm.pt')]
+    return any(c and os.path.exists(c) for c in candidates)
 
 
 def _cache_key(model_name, use_cnn, sequence):
@@ -57,8 +72,11 @@ def run_predictions(sequences, model_name=DEEPGOPLUS, use_cnn=False):
             miss_idx.append(i)
 
     if misses:
-        if model_name == DGPP_LIGHT:
-            preds = predict_functions_dgpp.delay(misses, use_cnn).get()
+        if model_name == DGPP_LIGHT_MCM:
+            # the hierarchy-aware variant IS the CNN component -> force cnn on
+            preds = predict_functions_dgpp.delay(misses, True, 'mcm').get()
+        elif model_name == DGPP_LIGHT:
+            preds = predict_functions_dgpp.delay(misses, use_cnn, 'light').get()
         else:
             preds = predict_functions.delay(misses).get()
         for j, idx in enumerate(miss_idx):

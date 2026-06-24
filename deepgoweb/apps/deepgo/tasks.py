@@ -16,26 +16,32 @@ terms = None
 
 # DeepGO-PlusPlus-Light is warm-loaded once per worker process, exactly like the
 # DeepGOPlus model/ontology globals above — the loaded predictor (DIAMOND DB + the
-# 205 MB precomputed bridge index) stays resident and is reused across tasks.
-dgpp_predictor = None
+# 205 MB precomputed bridge index) stays resident and is reused across tasks. One warm
+# instance per variant: 'light' (BCE CNN) and 'mcm' (hierarchy-aware C-HMCNN CNN); they
+# share the DIAMOND DB / bridge index and differ only in the cnn weights + integrators.
+dgpp_predictors = {}
 
 
 @task
-def predict_functions_dgpp(sequences, use_cnn=False):
+def predict_functions_dgpp(sequences, use_cnn=False, variant='light'):
     """DeepGO-PlusPlus-Light predictions, in the same output shape as
     ``predict_functions``: ``list[(annots {go_id->score}, sim_prots {prot->bitscore})]``
-    so the rest of the pipeline (web view, REST API, SPARQL endpoint) is unchanged."""
-    global dgpp_predictor
-    if dgpp_predictor is None:
+    so the rest of the pipeline (web view, REST API, SPARQL endpoint) is unchanged.
+
+    ``variant``: ``'light'`` (original) or ``'mcm'`` (hierarchy-aware CNN component)."""
+    global dgpp_predictors
+    predictor = dgpp_predictors.get(variant)
+    if predictor is None:
         from django.conf import settings
         from deepgo.dgpp import build_predictor
-        dgpp_predictor = build_predictor(settings.DGPP_LIGHT)
+        predictor = build_predictor(settings.DGPP_LIGHT, variant=variant)
+        dgpp_predictors[variant] = predictor
 
     # Honour use_cnn only if the weights and the cnn model are actually available.
-    cnn = (bool(use_cnn) and dgpp_predictor.cnn_model is not None
-           and (False, True) in dgpp_predictor.models)
+    cnn = (bool(use_cnn) and predictor.cnn_model is not None
+           and (False, True) in predictor.models)
     fasta = ''.join('>%d\n%s\n' % (i, seq) for i, seq in enumerate(sequences))
-    results, homologs = dgpp_predictor.predict_full(
+    results, homologs = predictor.predict_full(
         fasta, cnn=cnn, min_score=0.01, topk=5)
 
     out = []

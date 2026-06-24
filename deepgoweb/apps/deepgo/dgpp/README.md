@@ -64,6 +64,7 @@ Configuration (`settings.DGPP_LIGHT`, all overridable by env var):
 | `DGPP_DIAMOND` | `diamond` | DIAMOND binary (already required by DeepGOPlus) |
 | `DGPP_THREADS` | `8` | DIAMOND threads |
 | `DGPP_CNN_MODEL` | `<assets>/cnn_model.pt` | weights to enable `use_cnn` (needs `torch`, CPU) |
+| `DGPP_CNN_MODEL_MCM` | `<assets>/cnn_mcm.pt` | hierarchy-aware CNN weights for the `dgpp-light-mcm` model |
 | `DGPP_INTERPROSCAN` | — | path to `interproscan.sh` to enable the InterPro component |
 | `PREDICTION_CACHE_TTL` | `86400` | seconds to cache predictions in memcached; 0 disables |
 
@@ -71,3 +72,36 @@ When disabled or unbuilt, the model is removed from the form choices and the API
 rejects `model_name=dgpp-light` — DeepGOPlus is completely unaffected. The default
 (fast) path needs only the `diamond` binary and the Python standard library — no
 numpy, no torch.
+
+## Hierarchy-aware variant — `dgpp-light-mcm` (an alternative to the running model)
+
+`dgpp-light-mcm` is the **same CPU cascade** as `dgpp-light` with the CNN component
+**retrained hierarchy-aware**: the C-HMCNN Max-Constraint Module over the GO
+**is_a + part_of** DAG (true-path constraint) instead of flat BCE. On the leak-free
+clean benchmark the CNN component improves standalone f_w **0.257 → 0.294** and the
+CPU integrator **0.519 → 0.524** (see gspa `deepgo-plusplus/CASCADE.md`). It is a
+strict **alternative**: the original `dgpp-light` and DeepGOPlus are untouched.
+
+- Bundled here: `models/deepgo_plusplus_light_fast_cnn_mcm.json` and
+  `models/deepgo_plusplus_light_full_mcm.json` (same component sets as the BCE
+  versions — `diam,net_union,cnn` / `+interpro` — only the CNN + weights differ).
+- The CNN is **always on** for this model (that is its whole point), so the form's
+  `use_cnn` checkbox does not apply; `runner` forces it.
+- Deploy: drop the hierarchy-aware weights `cnn_mcm.pt` (gspa
+  `deepgo-plusplus/models/weights/cnn_mcm.pt`, rebuilt by
+  `pipeline/build_cnn_component.py --loss mcm --save-model`) into the asset bundle,
+  or point `DGPP_CNN_MODEL_MCM` at it. It is auto-hidden if those weights are absent
+  (`runner.dgpp_mcm_enabled()`); needs `torch` (CPU).
+
+### Choosing the model via SPARQL
+
+The Jena property function takes an **optional third object argument** = the model
+name, sent to the REST API as `model_name`. Two args → server default
+(DeepGOPlus); add `"dgpp-light-mcm"` (or `"dgpp-light"`) to select a model:
+
+```sparql
+PREFIX deepgo: <http://deepgoplus.bio2vec.net/functions#>
+SELECT ?subont ?go ?label ?score WHERE {
+  (?subont ?go ?label ?score) deepgo:deepgo ("MAKVLISP..." 0.3 "dgpp-light-mcm") .
+}
+```
