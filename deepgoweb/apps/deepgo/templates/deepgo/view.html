@@ -44,6 +44,32 @@
   </div>
   <hr>
 {% endfor %}
+{% if object.component_predictions %}
+<div class="row">
+  <div class="col-md-12">
+    <h2>Individual predictor outputs</h2>
+    <p>DeepGO-PlusPlus-Light combines several CPU components into the prediction above.
+       Below is each component's own top GO predictions, per protein.</p>
+    {% for comps in object.component_predictions %}
+    <h4>Protein {{ forloop.counter }}</h4>
+    <div class="row">
+      {% for label, terms in comps.items %}
+      <div class="col-md-4">
+        <strong>{{ label }}</strong>
+        <ul class="list">
+          {% for t in terms %}
+          <li><a href="http://amigo.geneontology.org/amigo/term/{{ t.0 }}"
+                 target="blank">{{ t.0 }}</a> - {{ t.1 }} - {{ t.2|floatformat:3 }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    <hr>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 <br/>
 <div class="row">
   <div class="col-md-2">

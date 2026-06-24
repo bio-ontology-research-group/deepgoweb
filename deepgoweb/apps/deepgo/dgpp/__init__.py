@@ -68,6 +68,12 @@ def build_predictor(cfg, variant='light'):
 
     files = MODEL_FILES.get(variant, MODEL_FILES['light'])
     models = {k: os.path.join(models_dir, f) for k, f in files.items()}
+
+    # full cpu_lean serving (mcm variant): the flat integrator + the CPU aux components.
+    # Each component stays off unless its asset is present, so the model degrades
+    # gracefully (e.g. proteinfer only when DGPP_PROTEINFER_DIR + its docker image exist).
+    cpu_lean = os.path.join(models_dir, 'cpu_lean_mcm.json') if variant == 'mcm' else None
+    emb_store = cfg.get('EMB_STORE') or asset('train_esm2_35m.npz')
     return DGppLight(
         models=models,
         train_net_index=asset('train_net_index.tsv'),
@@ -79,4 +85,8 @@ def build_predictor(cfg, variant='light'):
         interproscan=cfg.get('INTERPROSCAN') or None,
         cnn_model=resolve_cnn(),
         threads=int(cfg.get('THREADS', 8)),
+        emb_store=emb_store if os.path.exists(emb_store) else None,
+        proteinfer_dir=cfg.get('PROTEINFER_DIR') or None,
+        proteinfer_docker=cfg.get('PROTEINFER_DOCKER') or None,
+        cpu_lean_model=cpu_lean,
     )

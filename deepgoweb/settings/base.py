@@ -126,6 +126,26 @@ STORAGES = {
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'},
 }
 
+# DeepGO-PlusPlus-Light (CPU-only, hierarchy-aware CNN) — optional alternative predictor.
+# Served from the warm Celery worker via deepgo.tasks.predict_functions_dgpp; the model
+# JSONs ship in apps/deepgo/dgpp/models, the data assets (DIAMOND DB + train labels +
+# go-dag + cnn weights) live under ASSETS. Hidden from the form/API if ENABLED is off
+# or the DIAMOND DB is absent. See apps/deepgo/dgpp/README.md.
+DGPP_LIGHT = {
+    'ENABLED': os.environ.get('DGPP_ENABLED', '1') == '1',
+    'ASSETS': os.environ.get('DGPP_ASSETS', os.path.join(BASE_DIR, '..', 'dgpp_assets')),
+    'MODELS': os.environ.get('DGPP_MODELS', ''),     # '' -> bundled apps/deepgo/dgpp/models
+    'DIAMOND': os.environ.get('DGPP_DIAMOND', 'diamond'),
+    'THREADS': int(os.environ.get('DGPP_THREADS', '8')),
+    'INTERPROSCAN': os.environ.get('DGPP_INTERPROSCAN', ''),
+    'CNN_MODEL': os.environ.get('DGPP_CNN_MODEL', ''),
+    'CNN_MODEL_MCM': os.environ.get('DGPP_CNN_MODEL_MCM', ''),
+    # full cpu_lean components (each off unless its asset is present):
+    'EMB_STORE': os.environ.get('DGPP_EMB_STORE', ''),       # ESM2-35M kNN store (.npz)
+    'PROTEINFER_DIR': os.environ.get('DGPP_PROTEINFER_DIR', ''),    # ProteInfer repo dir
+    'PROTEINFER_DOCKER': os.environ.get('DGPP_PROTEINFER_DOCKER', ''),  # pre-built TF1.15 image
+}
+
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
 

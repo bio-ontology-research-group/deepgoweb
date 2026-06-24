@@ -81,8 +81,10 @@ class PredictionForm(forms.ModelForm):
             sequences[i] = sequences[i].strip()
         predictor = self.cleaned_data.get('predictor', 'deepgoplus')
         if predictor == 'dgpp-light':
-            # DeepGO-PlusPlus-Light: CPU cascade (hierarchy-aware CNN), release-independent.
-            preds = predict_functions_dgpp.delay(sequences, 'mcm').get()
+            # DeepGO-PlusPlus-Light: full cpu_lean CPU cascade, release-independent;
+            # also returns each component's own top predictions for display.
+            preds, components = predict_functions_dgpp.delay(sequences, 'mcm').get()
+            self.instance.component_predictions = components
         else:
             preds = predict_functions.delay(
                 self.cleaned_data['release'].pk, sequences).get()

@@ -35,11 +35,24 @@ class PredictionGroup(models.Model):
         ('enter', 'Raw Sequence'),
         ('fasta', 'FASTA'))
 
+    # Which predictor to run. 'deepgoplus' = the original release-based CNN + DIAMOND
+    # model; 'dgpp-light' = DeepGO-PlusPlus-Light, the CPU-only model whose CNN component
+    # is hierarchy-aware (C-HMCNN over the GO is_a+part_of DAG). See apps/deepgo/dgpp/.
+    PREDICTOR_CHOICES = (
+        ('deepgoplus', 'DeepGOPlus (CNN + DIAMOND)'),
+        ('dgpp-light', 'DeepGO-PlusPlus-Light, hierarchy-aware CNN (CPU)'))
+
     data = models.TextField()
     data_format = models.CharField(
         max_length=10,
         choices=DATA_FORMAT_CHOICES,
         default='fasta')
+    predictor = models.CharField(
+        max_length=20, choices=PREDICTOR_CHOICES, default='deepgoplus')
+    # DeepGO-PlusPlus-Light only: per-protein, per-component top predictions
+    # ([ {component_label: [[go_id, name, score], ...]}, ... ] in protein order),
+    # shown on the result page so users see each individual predictor's output.
+    component_predictions = models.JSONField(null=True, blank=True)
     user = models.ForeignKey(
         User, related_name='prediction_groups', null=True,
         on_delete=models.SET_NULL)

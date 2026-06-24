@@ -13,6 +13,46 @@ from deepgo.models import Release
 
 releases = {}
 
+# DeepGO-PlusPlus-Light: a warm CPU-only DGppLight per variant ('mcm' = hierarchy-aware
+# CNN). Reused across requests like the DeepGOPlus model above; assets come from
+# settings.DGPP_LIGHT (DIAMOND DB + train labels + go-dag + cnn weights).
+dgpp_predictors = {}
+
+
+@task
+def predict_functions_dgpp(sequences, variant='mcm'):
+    """DeepGO-PlusPlus-Light predictions, in the SAME output shape as
+    ``predict_functions``: list[(annots {go_id->score}, sim_prots {prot->bitscore})],
+    so the web view / serializer render path is unchanged."""
+    global dgpp_predictors
+    predictor = dgpp_predictors.get(variant)
+    if predictor is None:
+        from django.conf import settings
+        from deepgo.dgpp import build_predictor
+        predictor = build_predictor(settings.DGPP_LIGHT, variant=variant)
+        dgpp_predictors[variant] = predictor
+    fasta = ''.join('>%d\n%s\n' % (i, s) for i, s in enumerate(sequences))
+    # full cpu_lean: every configured CPU component (diam, net, cnn, esm2_knn,
+    # proteinfer) -> the cpu_lean integrator; also return the raw per-component preds.
+    results, homologs, raw = predictor.predict_cpu_lean(
+        fasta, min_score=0.01, topk=5, with_components=True)
+    out, components = [], []
+    for i in range(len(sequences)):
+        key = str(i)
+        annots = {p['term']: p['score'] for p in results.get(key, [])}
+        sim = {h: b for h, b in homologs.get(key, [])}
+        out.append((annots, sim))
+        # per-protein, per-component top predictions for the result page
+        per = {}
+        for comp_name, comp_preds in raw.items():
+            top = sorted(comp_preds.get(key, {}).items(), key=lambda x: -x[1])[:15]
+            if top:
+                label = predictor.COMP_LABELS.get(comp_name, comp_name)
+                per[label] = [[g, predictor.names.get(g, ''), round(float(s), 4)] for g, s in top]
+        components.append(per)
+    return out, components
+
+
 @task
 def predict_functions(release_pk, sequences):
     global releases
