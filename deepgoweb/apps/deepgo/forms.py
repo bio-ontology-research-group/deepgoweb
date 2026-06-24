@@ -2,7 +2,8 @@ from django import forms
 from django.utils.safestring import mark_safe
 from deepgo.models import Prediction, PredictionGroup, Release
 import datetime
-from deepgo.tasks import predict_functions
+from django.conf import settings
+from deepgo.tasks import predict_functions, predict_functions_dgpp
 from django.core.exceptions import ValidationError
 from deepgo.utils import (
     read_fasta)
@@ -21,13 +22,24 @@ class PredictionForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={'step':0.1}),
         label='Prediction threshold')
 
+    predictor = forms.ChoiceField(
+        choices=PredictionGroup.PREDICTOR_CHOICES, initial='deepgoplus',
+        label='Prediction model')
+
     class Meta:
         model = PredictionGroup
-        fields = ['release', 'data_format', 'threshold', 'data']
+        fields = ['predictor', 'release', 'data_format', 'threshold', 'data']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['data'].label = 'Sequences'
+        # Only offer DeepGO-PlusPlus-Light when it is enabled and its assets exist.
+        cfg = getattr(settings, 'DGPP_LIGHT', None)
+        import os
+        dgpp_ok = bool(cfg and cfg.get('ENABLED')
+                       and os.path.exists(os.path.join(cfg.get('ASSETS', ''), 'train_db.dmnd')))
+        if not dgpp_ok:
+            self.fields['predictor'].choices = [PredictionGroup.PREDICTOR_CHOICES[0]]
         self.fields['data_format'].label = 'Input Format (FASTA/Raw)'
         
     def clean_data_format(self):
@@ -67,10 +79,13 @@ class PredictionForm(forms.ModelForm):
         n = len(sequences)
         for i in range(n):
             sequences[i] = sequences[i].strip()
-        preds = predict_functions.delay(
-            self.cleaned_data['release'].pk,
-            sequences)
-        preds = preds.get()
+        predictor = self.cleaned_data.get('predictor', 'deepgoplus')
+        if predictor == 'dgpp-light':
+            # DeepGO-PlusPlus-Light: CPU cascade (hierarchy-aware CNN), release-independent.
+            preds = predict_functions_dgpp.delay(sequences, 'mcm').get()
+        else:
+            preds = predict_functions.delay(
+                self.cleaned_data['release'].pk, sequences).get()
         self.instance.save()
         predictions = list()
         for i in range(n):
