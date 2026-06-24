@@ -1,4 +1,6 @@
-from celery import task
+# Celery 5 removed the bare `task` decorator; `shared_task` is the supported
+# equivalent and keeps the `@task` usage below unchanged.
+from celery import shared_task as task
 
 import numpy as np
 import pandas as pd
