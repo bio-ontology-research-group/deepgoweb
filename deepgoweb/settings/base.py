@@ -118,7 +118,13 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'
+# Django 4.2 removed STATICFILES_STORAGE/CachedStaticFilesStorage; use the STORAGES dict.
+# ManifestStaticFilesStorage is the modern equivalent of the old Cached storage and
+# needs `collectstatic` at deploy time (as the old one did).
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'},
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
