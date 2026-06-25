@@ -142,6 +142,7 @@ DGPP_LIGHT = {
     'CNN_MODEL_MCM': os.environ.get('DGPP_CNN_MODEL_MCM', ''),
     # full cpu_lean components (each off unless its asset is present):
     'EMB_STORE': os.environ.get('DGPP_EMB_STORE', ''),       # ESM2-35M kNN store (.npz)
+    'ESM2_HEAD_MODEL': os.environ.get('DGPP_ESM2_HEAD_MODEL', ''),  # ESM2-35M MCM head (.pt)
     'PROTEINFER_DIR': os.environ.get('DGPP_PROTEINFER_DIR', ''),    # ProteInfer repo dir
     'PROTEINFER_DOCKER': os.environ.get('DGPP_PROTEINFER_DOCKER', ''),  # pre-built TF1.15 image
 }

@@ -74,6 +74,9 @@ def build_predictor(cfg, variant='light'):
     # gracefully (e.g. proteinfer only when DGPP_PROTEINFER_DIR + its docker image exist).
     cpu_lean = os.path.join(models_dir, 'cpu_lean_mcm.json') if variant == 'mcm' else None
     emb_store = cfg.get('EMB_STORE') or asset('train_esm2_35m.npz')
+    # ESM2-35M hierarchy-aware (MCM) head checkpoint — a component of the 7-way
+    # cpu_lean integrator; reuses the ESM2-35M embedding the kNN already computes.
+    esm2_head = cfg.get('ESM2_HEAD_MODEL') or asset('esm2_35m_mcm.pt')
     return DGppLight(
         models=models,
         train_net_index=asset('train_net_index.tsv'),
@@ -89,4 +92,5 @@ def build_predictor(cfg, variant='light'):
         proteinfer_dir=cfg.get('PROTEINFER_DIR') or None,
         proteinfer_docker=cfg.get('PROTEINFER_DOCKER') or None,
         cpu_lean_model=cpu_lean,
+        esm2_head_model=esm2_head if os.path.exists(esm2_head) else None,
     )

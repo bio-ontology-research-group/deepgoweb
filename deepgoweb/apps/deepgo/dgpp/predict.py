@@ -117,7 +117,8 @@ class DGppLight:
                  tier_models=None, emb_store=None, esm2_name='esm2_t12_35M_UR50D',
                  esm2_layer=12, emapper=None, eggnog_data=None,
                  psortb=None, psortb_gram='neg', proteinfer_dir=None,
-                 cpu_lean_model=None, proteinfer_docker=None):
+                 cpu_lean_model=None, proteinfer_docker=None,
+                 esm2_head_model=None):
         """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
         Only the combinations whose model file exists are served.
 
@@ -150,6 +151,13 @@ class DGppLight:
         self.esm2_layer = esm2_layer
         self._esm2 = None          # lazy (model, batch_converter)
         self._store = None         # lazy (ids, l2-normalized emb)
+        # ESM2-35M hierarchy-aware (C-HMCNN/MCM) head — a parametric component over
+        # the SAME mean-pooled ESM2-35M embedding the kNN uses (shared, one forward
+        # pass per request via self._emb_cache).
+        self.esm2_head_model = (esm2_head_model
+                                if esm2_head_model and os.path.exists(esm2_head_model) else None)
+        self._esm2_head = None     # lazy {aspect: (mlp, terms)}
+        self._emb_cache = {}       # fasta_path -> {name: raw mean-pooled ESM2-35M emb}
         # optional CPU auxiliary components (orphan tier; all gated on tool presence)
         self.emapper = emapper            # eggnog: emapper.py (orthology -> GO)
         self.eggnog_data = eggnog_data    # eggNOG data_dir
@@ -397,6 +405,34 @@ class DGppLight:
             results[q] = preds
         return results
 
+    def _esm2_embed(self, fasta_path):
+        """Raw mean-pooled ESM2-35M embedding per query protein, cached per
+        ``fasta_path`` so the kNN and the MCM head share ONE ESM2 forward pass.
+        Returns ``{name: np.float32[d]}`` (unnormalized — the kNN L2-normalizes for
+        cosine; the head consumes the raw vector, matching how it was trained)."""
+        if fasta_path in self._emb_cache:
+            return self._emb_cache[fasta_path]
+        import numpy as np
+        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU)
+            import torch, esm
+            model, alphabet = getattr(esm.pretrained, self.esm2_name)()
+            torch.set_num_threads(self.threads)
+            self._esm2 = (model.eval(), alphabet.get_batch_converter(), torch)
+        model, bc, torch = self._esm2
+        seqs = [(n, s) for n, s in read_fasta(open(fasta_path).read())]
+        seqs.sort(key=lambda x: len(x[1]))            # length-sorted batching
+        out = {}
+        for i in range(0, len(seqs), 16):
+            batch = [(n, s[:1022]) for n, s in seqs[i:i + 16]]
+            _, _, toks = bc(batch)
+            with torch.no_grad():
+                rep = model(toks, repr_layers=[self.esm2_layer])['representations'][self.esm2_layer]
+            for j, (n, s) in enumerate(batch):
+                L = min(len(s), 1022)
+                out[n] = rep[j, 1:L + 1].mean(0).numpy().astype('float32')
+        self._emb_cache[fasta_path] = out
+        return out
+
     def _esm2_knn_component(self, fasta_path, topk=10, min_score=0.01):
         """goPredSim-style embedding-kNN over the pre-t0 ESM2-35M train store.
         CPU-only at inference: embed query seqs (small ESM2-35M), cosine-kNN vs the
@@ -411,40 +447,64 @@ class DGppLight:
             emb /= (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-8)
             self._store = (list(d['ids']), emb)
         ids, store = self._store
-        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU)
-            import torch, esm
-            model, alphabet = getattr(esm.pretrained, self.esm2_name)()
-            torch.set_num_threads(self.threads)
-            self._esm2 = (model.eval(), alphabet.get_batch_converter(), torch)
-        model, bc, torch = self._esm2
-        seqs = [(n, s) for n, s in read_fasta(open(fasta_path).read())]
-        seqs.sort(key=lambda x: len(x[1]))            # length-sorted batching
         comp = defaultdict(dict)
-        for i in range(0, len(seqs), 16):
-            batch = [(n, s[:1022]) for n, s in seqs[i:i + 16]]
-            _, _, toks = bc(batch)
-            with torch.no_grad():
-                rep = model(toks, repr_layers=[self.esm2_layer])['representations'][self.esm2_layer]
-            for j, (n, s) in enumerate(batch):
-                L = min(len(s), 1022)
-                q = rep[j, 1:L + 1].mean(0).numpy()
-                q /= (np.linalg.norm(q) + 1e-8)
-                sims = store @ q
-                nn = np.argpartition(-sims, min(topk, len(ids) - 1))[:topk]
-                vote, wsum = defaultdict(float), 0.0
-                for k in nn:
-                    w = float(sims[k])
-                    if w <= 0:
-                        continue
-                    wsum += w
-                    for t in self.train_terms.get(ids[k], ()):
-                        vote[t] += w
-                if wsum <= 0:
+        for n, q0 in self._esm2_embed(fasta_path).items():
+            q = q0 / (np.linalg.norm(q0) + 1e-8)      # cosine
+            sims = store @ q
+            nn = np.argpartition(-sims, min(topk, len(ids) - 1))[:topk]
+            vote, wsum = defaultdict(float), 0.0
+            for k in nn:
+                w = float(sims[k])
+                if w <= 0:
                     continue
-                for t, v in vote.items():
-                    sc = v / wsum
-                    if sc >= min_score:
-                        comp[n][t] = sc
+                wsum += w
+                for t in self.train_terms.get(ids[k], ()):
+                    vote[t] += w
+            if wsum <= 0:
+                continue
+            for t, v in vote.items():
+                sc = v / wsum
+                if sc >= min_score:
+                    comp[n][t] = sc
+        return comp
+
+    def _esm2_head_component(self, fasta_path, min_score=0.01):
+        """ESM2-35M hierarchy-aware head: per-aspect MLP over the same mean-pooled
+        ESM2-35M embedding the kNN uses, trained with the C-HMCNN Max-Constraint
+        Module over the GO is_a+part_of DAG. Parametric complement to the kNN."""
+        if not self.esm2_head_model:
+            raise RuntimeError('esm2_head requested but no esm2_head_model configured')
+        import numpy as np, torch
+        if self._esm2_head is None:
+            class _HeadMLP(torch.nn.Module):
+                def __init__(self, d, n, hidden=1024):
+                    super().__init__()
+                    self.net = torch.nn.Sequential(
+                        torch.nn.Linear(d, hidden), torch.nn.GELU(),
+                        torch.nn.Dropout(0.3), torch.nn.Linear(hidden, n))
+                def forward(self, x):
+                    return self.net(x)
+            ckpt = torch.load(self.esm2_head_model, map_location='cpu', weights_only=False)
+            torch.set_num_threads(self.threads)
+            heads = {}
+            for aspect, a in ckpt['aspects'].items():
+                m = _HeadMLP(ckpt['dim'], len(a['terms']), ckpt.get('hidden', 1024))
+                m.load_state_dict(a['state_dict']); m.eval()
+                heads[aspect] = (m, a['terms'])
+            self._esm2_head = heads
+        embs = self._esm2_embed(fasta_path)
+        names = list(embs.keys())
+        comp = defaultdict(dict)
+        if not names:
+            return comp
+        X = torch.tensor(np.stack([embs[n] for n in names]))
+        with torch.no_grad():
+            for aspect, (mlp, terms) in self._esm2_head.items():
+                P = torch.sigmoid(mlp(X)).numpy()
+                for i, n in enumerate(names):
+                    row = P[i]
+                    for j in np.nonzero(row >= min_score)[0]:
+                        comp[n][terms[j]] = float(row[j])
         return comp
 
     def cascade(self, fasta_text, *, topk=5, min_score=0.1,
@@ -527,6 +587,7 @@ class DGppLight:
         'net_union': 'STRING Net-KNN (homology bridge)',
         'cnn': 'Hierarchy-aware CNN (C-HMCNN)',
         'esm2_knn': 'ESM2-35M embedding kNN',
+        'esm2_head': 'ESM2-35M hierarchy-aware head (C-HMCNN)',
         'proteinfer': 'ProteInfer (sequence CNN)',
     }
 
@@ -548,6 +609,8 @@ class DGppLight:
                 raw['cnn'] = self._cnn_component(path)
             if self.emb_store:
                 raw['esm2_knn'] = self._esm2_knn_component(path)
+            if self.esm2_head_model:
+                raw['esm2_head'] = self._esm2_head_component(path)
             if self.proteinfer_dir:
                 raw['proteinfer'] = self._proteinfer_component(path)
             comps = {k: self._propagate(v) for k, v in raw.items()}
