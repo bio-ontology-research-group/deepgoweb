@@ -3,6 +3,34 @@
 {% block head %}
 {% endblock %}
 {% block content %}
+<h1 class="h2 mb-3">Changelog</h1>
+
+<div class="card mb-4">
+  <div class="card-header"><h3 class="card-title h5 mb-0">Platform updates</h3></div>
+  <div class="card-body">
+    <h4 class="h6 text-secondary">2026-06 — DeepGO-PlusPlus-Light, predictor API &amp; SPARQL, new look</h4>
+    <ul>
+      <li>New CPU-only model <strong>DeepGO-PlusPlus-Light</strong> — a
+        multi-evidence ensemble (DIAMOND, STRING-Net, a hierarchy-aware CNN,
+        ESM2-35M embedding kNN and hierarchy-aware head, ProteInfer) selectable on
+        the <a href="{% url 'prediction' %}">Prediction</a> page, with each
+        component's own output shown on the result page.</li>
+      <li>New predictor-aware REST endpoint <code>/deepgo/api/predict</code>
+        (takes a <code>predictor</code> field and returns per-component substreams);
+        the original <code>/deepgo/api/create</code> is unchanged.</li>
+      <li>New SPARQL functions <code>dg:predict</code> and <code>dg:components</code>
+        on the <a href="{% url 'sparql' %}">SPARQL</a> endpoint, in addition to the
+        unchanged <code>dg:deepgo</code>.</li>
+      <li>Result pages now show only the most specific GO terms by default
+        (redundant ancestors hidden; full set kept in the JSON/CSV export), and
+        obsolete predicted terms are transferred to their replacements.</li>
+      <li>Modernised the website (Bootstrap 5) and refreshed the security
+        dependencies.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 class="h4 mb-3">Model releases</h2>
 {% for rel in object_list %}
 <div class="card">
   <div class="card-header">
