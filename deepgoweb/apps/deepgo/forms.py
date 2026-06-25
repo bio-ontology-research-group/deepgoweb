@@ -26,9 +26,15 @@ class PredictionForm(forms.ModelForm):
         choices=PredictionGroup.PREDICTOR_CHOICES, initial='deepgoplus',
         label='Prediction model')
 
+    contract = forms.BooleanField(
+        initial=True, required=False,
+        label='Show only the most specific terms (hide redundant ancestors '
+              'above the threshold)')
+
     class Meta:
         model = PredictionGroup
-        fields = ['predictor', 'release', 'data_format', 'threshold', 'data']
+        fields = ['predictor', 'release', 'data_format', 'threshold',
+                  'contract', 'data']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

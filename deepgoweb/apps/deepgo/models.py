@@ -36,11 +36,17 @@ class PredictionGroup(models.Model):
         ('fasta', 'FASTA'))
 
     # Which predictor to run. 'deepgoplus' = the original release-based CNN + DIAMOND
-    # model; 'dgpp-light' = DeepGO-PlusPlus-Light, the CPU-only model whose CNN component
-    # is hierarchy-aware (C-HMCNN over the GO is_a+part_of DAG). See apps/deepgo/dgpp/.
+    # model; 'dgpp-light' = DeepGO-PlusPlus-Light, the CPU-only cascade that combines
+    # several heterogeneous components (DIAMOND BLAST-KNN, homology-bridged STRING
+    # Net-KNN, a hierarchy-aware C-HMCNN CNN over the GO is_a+part_of DAG, an ESM2-35M
+    # embedding kNN, and ProteInfer) with a learned per-aspect integrator. The CNN is
+    # only one of the components — the model as a whole is a multi-evidence ensemble.
+    # See apps/deepgo/dgpp/.
     PREDICTOR_CHOICES = (
         ('deepgoplus', 'DeepGOPlus (CNN + DIAMOND)'),
-        ('dgpp-light', 'DeepGO-PlusPlus-Light, hierarchy-aware CNN (CPU)'))
+        ('dgpp-light',
+         'DeepGO-PlusPlus-Light — CPU multi-evidence ensemble '
+         '(DIAMOND + STRING-Net + hierarchy-aware CNN + ESM2-kNN + ProteInfer)'))
 
     data = models.TextField()
     data_format = models.CharField(
@@ -60,6 +66,12 @@ class PredictionGroup(models.Model):
     threshold = models.FloatField(
         default=0.3,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+    # When True (the default), the result view contracts each aspect's predicted
+    # GO terms to the most specific ones: any term that is a (true-path) ancestor of
+    # another predicted term above the threshold is hidden, since its score is implied
+    # by the more specific descendant. The full propagated set is still kept in the
+    # stored arrays and the JSON/CSV exports — contraction is display-only.
+    contract = models.BooleanField(default=True)
     release = models.ForeignKey(
         Release, related_name='prediction_groups', null=True,
         on_delete=models.SET_NULL)
@@ -101,29 +113,58 @@ class Prediction(models.Model):
                 else:
                     yield (func, '')
     
-    def get_functions(self):
+    def get_functions(self, contract=None):
         go = self.group.go
+        # contract=None -> follow the group's display preference; callers that need
+        # the canonical full propagated set (JSON/CSV export) pass contract=False.
+        if contract is None:
+            contract = getattr(self.group, 'contract', True)
+        # Per-aspect map: go_id -> [name, score]. Using a dict lets us merge a term
+        # with itself (keep the max score) after obsolete terms are transferred onto
+        # their replacements.
         res = {
-            'cellular_component': [],
-            'molecular_function': [], 'biological_process': []}
+            'cellular_component': {},
+            'molecular_function': {}, 'biological_process': {}}
         for i in range(len(self.functions)):
             if self.scores[i] < self.group.threshold:
                 continue
             func = self.functions[i]
-            if go.is_root_term(func):
+            score = self.scores[i]
+            # Resolve obsolete terms via the GO replaced_by/consider fields so a
+            # predicted-but-obsolete class is transferred to its replacement (or, if
+            # there is none, surfaced with an [OBSOLETE] marker) instead of silently
+            # vanishing.
+            target, status, label = go.resolve_term(func)
+            if target is None:
                 continue
-            if go.has_term(func):
-                name = go.get(func)['name']
-                res[go.get(func)['namespace']].append(
-                    (func, name, self.scores[i]))
-        res['cellular_component'] = sorted(
-            res['cellular_component'], key=lambda x: x[2], reverse=True)
-        res['molecular_function'] = sorted(
-            res['molecular_function'], key=lambda x: x[2], reverse=True)
-        res['biological_process'] = sorted(
-            res['biological_process'], key=lambda x: x[2], reverse=True)
+            if go.is_root_term(target):
+                continue
+            namespace = go.get_namespace(target)
+            if namespace not in res:
+                continue
+            cur = res[namespace].get(target)
+            if cur is None or score > cur[1]:
+                res[namespace][target] = [label, score]
+
         ret = []
-        ret.append({'name': 'Cellular Component', 'functions': res['cellular_component']})
-        ret.append({'name': 'Molecular Function', 'functions': res['molecular_function']})
-        ret.append({'name': 'Biological Process', 'functions': res['biological_process']})
+        order = [
+            ('cellular_component', 'Cellular Component'),
+            ('molecular_function', 'Molecular Function'),
+            ('biological_process', 'Biological Process')]
+        for key, title in order:
+            terms = res[key]
+            if contract and terms:
+                # Hide any term that is a strict ancestor of another shown term:
+                # the more specific descendant already implies it (true-path rule).
+                shown = set(terms.keys())
+                redundant = set()
+                for t in shown:
+                    anc = go.get_anchestors(t)
+                    anc.discard(t)
+                    redundant |= (anc & shown)
+                terms = {t: v for t, v in terms.items() if t not in redundant}
+            functions = sorted(
+                ((t, v[0], v[1]) for t, v in terms.items()),
+                key=lambda x: x[2], reverse=True)
+            ret.append({'name': title, 'functions': functions})
         return ret

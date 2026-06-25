@@ -64,6 +64,8 @@ class Ontology(object):
                     obj['part_of'] = list()
                     obj['regulates'] = list()
                     obj['alt_ids'] = list()
+                    obj['consider'] = list()
+                    obj['replaced_by'] = None
                     obj['is_obsolete'] = False
                     continue
                 elif line == '[Typedef]':
@@ -86,14 +88,29 @@ class Ontology(object):
                         obj['is_a'].append(it[1])
                     elif l[0] == 'name':
                         obj['name'] = l[1]
+                    elif l[0] == 'replaced_by':
+                        obj['replaced_by'] = l[1].split(' ! ')[0]
+                    elif l[0] == 'consider':
+                        obj['consider'].append(l[1].split(' ! ')[0])
                     elif l[0] == 'is_obsolete' and l[1] == 'true':
                         obj['is_obsolete'] = True
         if obj is not None:
             ont[obj['id']] = obj
+        # Keep obsolete terms out of the active ontology, but remember their
+        # replaced_by/consider successors so predicted-but-obsolete classes can be
+        # transferred (or flagged) at display time instead of silently dropped.
+        self.obsolete = {}
         for term_id in list(ont.keys()):
             for t_id in ont[term_id]['alt_ids']:
                 ont[t_id] = ont[term_id]
             if ont[term_id]['is_obsolete']:
+                o = ont[term_id]
+                self.obsolete[term_id] = {
+                    'name': o.get('name', ''),
+                    'namespace': o.get('namespace'),
+                    'replaced_by': o.get('replaced_by'),
+                    'consider': list(o.get('consider', [])),
+                }
                 del ont[term_id]
         for term_id, val in ont.items():
             if 'children' not in val:
@@ -140,7 +157,37 @@ class Ontology(object):
         return terms
 
     def get_namespace(self, term_id):
-        return self.ont[term_id]['namespace']
+        if term_id in self.ont:
+            return self.ont[term_id]['namespace']
+        info = getattr(self, 'obsolete', {}).get(term_id)
+        if info is not None:
+            return info.get('namespace')
+        return None
+
+    def resolve_term(self, term_id):
+        """Resolve a predicted GO id for display, accounting for obsoletion.
+
+        Returns ``(target_id, status, label)``:
+          * active term            -> (term_id, 'active', name)
+          * obsolete + replaced_by -> (replacement, 'replaced', 'name (was GO:x, obsolete)')
+          * obsolete + consider    -> (suggestion, 'consider', 'name (GO:x obsolete; consider)')
+          * obsolete, no successor -> (term_id, 'obsolete', 'name [OBSOLETE]')
+          * unknown id             -> (None, 'unknown', '')
+        ``target_id`` is the id to score/propagate under; ``label`` is the display text.
+        """
+        ont = self.ont
+        if term_id in ont and not ont[term_id].get('is_obsolete'):
+            return term_id, 'active', ont[term_id].get('name', term_id)
+        info = getattr(self, 'obsolete', {}).get(term_id)
+        if info is None:
+            return None, 'unknown', ''
+        rep = info.get('replaced_by')
+        if rep and rep in ont:
+            return rep, 'replaced', f"{ont[rep].get('name', rep)} (was {term_id}, obsolete)"
+        for c in info.get('consider', []):
+            if c in ont:
+                return c, 'consider', f"{ont[c].get('name', c)} ({term_id} obsolete; consider)"
+        return term_id, 'obsolete', (info.get('name') or term_id) + ' [OBSOLETE]'
     
     def get_term_set(self, term_id):
         if term_id not in self.ont:

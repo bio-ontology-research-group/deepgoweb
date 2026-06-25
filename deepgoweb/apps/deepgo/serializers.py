@@ -16,7 +16,9 @@ class PredictionSerializer(serializers.ModelSerializer):
         fields = ['protein_info', 'sequence', 'functions']
     
     def get_functions(self, obj):
-        return obj.get_functions()
+        # API returns the full propagated set (obsolete terms resolved), not the
+        # contracted view used for the HTML page.
+        return obj.get_functions(contract=False)
     
 class PredictionGroupSerializer(serializers.ModelSerializer):
 

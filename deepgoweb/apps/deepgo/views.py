@@ -54,7 +54,8 @@ class PredictionDetailView(ActionMixin, DetailView):
         writer = csv.writer(response)
         for pred in pg.predictions.all():
             writer.writerow([pred.protein_info, ])
-            for ont in pred.get_functions():
+            # Export the full propagated set regardless of the view's contraction toggle.
+            for ont in pred.get_functions(contract=False):
                 writer.writerow([ont['name'],])
                 for go_id, func, score in ont['functions']:
                     writer.writerow([go_id, func, str(score)])
