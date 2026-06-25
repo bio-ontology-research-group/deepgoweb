@@ -42,6 +42,11 @@ public class Main {
 	    
 	reg.put(Functions.NAMESPACE + "functions#deepgo",
 		new DeepGOPropertyFunctionFactory());
+	// Backwards-compatible additions: predictor-aware prediction + substreams.
+	reg.put(Functions.NAMESPACE + "functions#predict",
+		new PredictPropertyFunctionFactory());
+	reg.put(Functions.NAMESPACE + "functions#components",
+		new ComponentsPropertyFunctionFactory());
 	PropertyFunctionRegistry.set(ARQ.getContext(), reg);
 	Dataset ds = DatasetFactory.create();
 	fsb.add("/ds", ds, true);
