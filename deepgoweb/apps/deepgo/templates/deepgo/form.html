@@ -3,98 +3,74 @@
 
 {% block content %}
 
-<div class="row">
-  <div class="col-md-12">
-    <h1>DeepGOWeb Protein Function prediction webserver</h1> <br/>
-    <p>DeepGOWeb is a webservice for predicting protein functions
-      based on protein sequence using
-      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
-        DeepGOPlus</a> method.
-      It uses deep convolutional neural networks to learn sequence
-      features and combines predictions with sequence similarity
-      based predictions.
-    </p>
-    <p>The tool only needs protein sequence as an input. The source
-      code of the model is available on
-      <a href="https://github.com/bio-ontology-research-group/deepgoplus">
-	GitHub repository</a>
-    </p>
-    <p>The <a href="{% url "api-predictions-create" %}">REST API</a> is
-    available for submitting sequences programmatically.
-    </p>
-    <p>We also provide a <a href="{% url "sparql" %}">SPARQL</a>
-      endpoint for calling our predictor in SPARQL queries.
-    </p>
-    <p>
-      Input data:
-      <ul>
-        <li>Format: <strong>FASTA</strong> format or <strong>Raw
-        Sequences</strong> separated by a newline</li>
-        <li>Threshold: a value between 0.1 and 1.0 for filtering
-          predictions by the confidence score of the model</li>
-        <li>Data: Protein sequences in selected format</li>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <h1 class="h2 mb-3">Protein function prediction</h1>
+    <p class="text-secondary">DeepGOWeb predicts protein functions from sequence
+      using <a href="https://github.com/bio-ontology-research-group/deepgoplus">DeepGOPlus</a>
+      and the CPU-only DeepGO-PlusPlus-Light ensemble. Just paste one or more
+      sequences below. A <a href="{% url 'api-predictions-create' %}">REST API</a>
+      and a <a href="{% url 'sparql' %}">SPARQL</a> endpoint are also available.</p>
+
+    <div class="surface mt-3">
+      <form class="form" method="post">
+        {% csrf_token %}
+        {% for field in form %}
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="form-check mb-3">
+              {% render_field field class+="form-check-input" %}
+              <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            </div>
+          {% else %}
+            <div class="mb-3">
+              {{ field.label_tag }}
+              {% render_field field class+="form-control" %}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="fas fa-flask me-2"></i>Submit</button>
+      </form>
+    </div>
+    <p class="text-danger mt-3 mb-0"><strong>The number of sequences in one query should not exceed 10.</strong></p>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card p-4 h-100">
+      <h3 class="h5">Try an example</h3>
+      <ul class="mb-4">
+        <li><a class="prot_link" id="P80386" href="#">AAKB1 (P80386) — FASTA</a></li>
+        <li><a class="prot_link" id="Q14738" href="#">PPP2R5D (Q14738) — raw sequence</a></li>
       </ul>
-    </p>
-    <br/>
-    <p style='color:red;'>
-      <strong>The number of sequences in one query should not exceed 10!</strong></p>
-    
+
+      <h3 class="h5">Input</h3>
+      <ul class="text-secondary small">
+        <li><strong>Format</strong>: FASTA, or raw sequences separated by a newline.</li>
+        <li><strong>Threshold</strong>: 0.1–1.0, filters predictions by confidence.</li>
+        <li><strong>Data</strong>: protein sequences in the selected format.</li>
+      </ul>
+
+      <h3 class="h5 mt-2">Output</h3>
+      <p class="text-secondary small mb-0">GO terms for Biological Process,
+        Molecular Function and Cellular Component with confidence scores, plus
+        similar proteins. See an example
+        <a href="{% url 'prediction-detail' example_uuid %}">result</a> or the
+        <a href="{% url 'documentation' %}">documentation</a>. Results are
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY</a>
+        and downloadable as JSON/CSV.</p>
+    </div>
   </div>
 </div>
-<div class="row">
-  <div class="col-md-12">
-    <h3>Examples:</h3>
-    <ul>
-      <li><a class="prot_link" id="P80386" href="#">AAKB1 (P80386) - FASTA</a></li>
-      <li><a class="prot_link" id="Q14738" href="#">PPP2R5D (Q14738) -
-          Raw sequence</a></li>
-    </ul>
 
-    <h3> Output description: </h3>
-    <p>
-      The output page provides function predictions for each
-      protein. A prediction includes GO terms for the Biological
-      Process, Molecular Function, and Cellular Component
-      sub-ontologies with confidence scores. Only predictions with a
-      confidence above the threshold parameter are shown. We also show
-      a list of proteins that are used for predictions based on
-      sequence similarity and their similarity score to the query
-      protein.
-      The results are provided
-      under the <a href="https://creativecommons.org/licenses/by/4.0/"
-               target="_blank">CC-BY</a> License and 
-      can be downloaded in JSON/CSV formats. You can find an example
-      output <a href="{% url "prediction-detail" example_uuid %}">here</a> and a more detailed description of the
-      information generated by DeepGOWeb in
-      the <a href="{% url "documentation" %}">Documentation</a>.
-    </p>
-
-    <p id="P80386_seq" class="deepgo-sequence" data-format="fasta">>sp|P80386|AAKB1_RAT 5'-AMP-activated protein kinase subunit beta-1 OS=Rattus norvegicus GN=Prkab1 PE=1 SV=4
+<p id="P80386_seq" class="deepgo-sequence" data-format="fasta">>sp|P80386|AAKB1_RAT 5'-AMP-activated protein kinase subunit beta-1 OS=Rattus norvegicus GN=Prkab1 PE=1 SV=4
 MGNTSSERAALERQAGHKTPRRDSSGGTKDGDRPKILMDSPEDADIFHTEEMKAPEKEEF
 LAWQHDLEVNEKAPAQARPTVFRWTGGGKEVYLSGSFNNWSKLPLTRSQNNFVAILDLPE
 GEHQYKFFVDGQWTHDPSEPIVTSQLGTVNNIIQVKKTDFEVFDALMVDSQKCSDVSELS
 SSPPGPYHQEPYISKPEERFKAPPILPPHLLQVILNKDTGISCDPALLPEPNHVMLNHLY
 ALSIKDGVMVLSATHRYKKKYVTTLLYKPI</p>
-    <br/>
-
-    <p id="Q14738_seq" class="deepgo-sequence" data-format="enter">MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL</p>
-</div>
-<div class="row">
-  <div class="col-md-12">
-    <form class="form" method="post">
-      {% csrf_token %}
-      {% for field in form %}
-      <div class="form-group {% if field.errors %}has-error{% endif %}">
-        {{ field.label_tag }}
-        {% render_field field class+="form-control" %}
-        {{ field.errors }}
-      </div>
-      {% endfor %}
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
-  </div>
-</div>
-
+<p id="Q14738_seq" class="deepgo-sequence" data-format="enter">MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL</p>
 
 {% endblock %}
 
@@ -106,8 +82,7 @@ ALSIKDGVMVLSATHRYKKKYVTTLLYKPI</p>
       var prot_id = e.currentTarget.id + '_seq';
       var format = $('#' + prot_id).data().format;
       var sequence = $('#' + prot_id).text();
-      console.log(format);
-      $('#id_data').text(sequence);
+      $('#id_data').val(sequence);
       $('#id_data_format option[value=' + format + ']').prop('selected', true);
     });
   });

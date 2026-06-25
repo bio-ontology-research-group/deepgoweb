@@ -11,8 +11,9 @@
 # --- Django stack (4.2 LTS) ---
 Django==4.2.30
 djangorestframework==3.15.2
-django-allauth==0.61.1   # 4.2-compatible; 65.x clears 2 more CVEs but its template
-                         # overhaul breaks the custom account/* templates (see README)
+django-allauth==65.14.1  # clears open-redirect + token CVEs; login.html stripped of
+                         # the removed get_providers/provider_list social tags (social
+                         # login is not configured here)
 django-widget-tweaks==1.5.0
 django-cookie-law==2.2.0
 defusedxml==0.7.1

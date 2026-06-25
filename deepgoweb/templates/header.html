@@ -1,17 +1,24 @@
-<nav class="navbar navbar-deepgo navbar-fixed-top">
-  <div class="container-fluid">
-    <div class="navbar-header">
-      <a class="navbar-brand" href="{% url 'home' %}">DeepGOWeb</a>
-    </div>
-    <div id="navbar" class="collapse navbar-collapse">
-      <ul class="nav navbar-nav">
-        <li><a href="{% url 'prediction' %}">Prediction</a></li>
-        <li><a href="{% url 'api-predictions-create' %}">API</a></li>
-        <li><a href="{% url 'sparql' %}">SPARQL</a></li>
-        <li><a href="{% url 'documentation' %}">Documentation</a></li>
-        <li><a href="{% url 'changelog' %}">ChangeLog</a></li>
-        <li><a href="{% url 'contacts' %}">Contacts</a></li>
+{% with url_name=request.resolver_match.url_name %}
+<nav class="navbar navbar-expand-lg navbar-deepgo sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'home' %}">
+      <i class="fas fa-dna me-2"></i><span>DeepGO<span class="brand-accent">Web</span></span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#mainnav" aria-controls="mainnav"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainnav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link {% if url_name == 'prediction' %}active{% endif %}" href="{% url 'prediction' %}">Prediction</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'api-predictions-create' %}active{% endif %}" href="{% url 'api-predictions-create' %}">API</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'sparql' %}active{% endif %}" href="{% url 'sparql' %}">SPARQL</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'documentation' %}active{% endif %}" href="{% url 'documentation' %}">Documentation</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'changelog' %}active{% endif %}" href="{% url 'changelog' %}">ChangeLog</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'contacts' %}active{% endif %}" href="{% url 'contacts' %}">Contacts</a></li>
       </ul>
     </div>
   </div>
 </nav>
+{% endwith %}

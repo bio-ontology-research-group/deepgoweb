@@ -1,10 +1,50 @@
 {% extends "base.html" %}
 
 {% block content %}
+<section class="hero">
+  <h1>Protein function prediction<br>from sequence</h1>
+  <p class="lead">DeepGOWeb predicts Gene Ontology functions for any protein
+     sequence using the DeepGOPlus and DeepGO-PlusPlus-Light models — combining
+     deep sequence models with homology, structure and network evidence.</p>
+  <div class="d-flex flex-wrap gap-2 mt-4">
+    <a href="{% url 'prediction' %}" class="btn btn-light btn-lg">
+      <i class="fas fa-flask me-2"></i>Predict functions</a>
+    <a href="{% url 'documentation' %}" class="btn btn-outline-light btn-lg">Read the docs</a>
+  </div>
+</section>
 
-<div class="starter-template">
-  <h1>DeepGOPlus</h1>
-  <p class="lead"></p>
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card feature-card h-100 p-4">
+      <div class="feature-icon"><i class="fas fa-dna"></i></div>
+      <h4 class="h5">DeepGOPlus</h4>
+      <p class="text-secondary mb-0">A convolutional sequence model combined with
+         DIAMOND homology transfer, predicting GO terms across all three
+         sub-ontologies with calibrated scores.</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card feature-card h-100 p-4">
+      <div class="feature-icon"><i class="fas fa-layer-group"></i></div>
+      <h4 class="h5">DeepGO-PlusPlus-Light <span class="pill">CPU</span></h4>
+      <p class="text-secondary mb-0">A CPU-only multi-evidence ensemble — DIAMOND,
+         STRING-Net, a hierarchy-aware CNN, ESM2 embeddings and ProteInfer — with a
+         learned per-aspect integrator and per-component outputs.</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card feature-card h-100 p-4">
+      <div class="feature-icon"><i class="fas fa-share-nodes"></i></div>
+      <h4 class="h5">API &amp; SPARQL</h4>
+      <p class="text-secondary mb-0">Call prediction programmatically over a REST
+         API, or query it inline from SPARQL and federate with UniProt — choosing
+         the model and inspecting each component.</p>
+    </div>
+  </div>
 </div>
 
+<div class="text-center mt-5">
+  <a href="{% url 'prediction' %}" class="btn btn-primary btn-lg">
+    Get started <i class="fas fa-arrow-right ms-2"></i></a>
+</div>
 {% endblock %}
