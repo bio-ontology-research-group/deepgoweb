@@ -1,0 +1,82 @@
+# DeepGOWeb — full stack. `docker compose up` brings up the site, the prediction
+# worker, the SPARQL endpoint, Redis (Celery broker) and Postgres. Model/data assets
+# are downloaded on first start into the named `assets` / `release_data` volumes
+# (see docker/download_assets.sh); set DOWNLOAD_ASSETS=0 once populated.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: deepgoweb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+  web:
+    build: .
+    command: ["web"]
+    environment:
+      DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      FUSEKI_URL: http://fuseki:3330/ds/query
+      DGPP_ASSETS: /opt/dgpp_assets
+      RELEASE_DATA_ROOT: /opt-data/extracted/
+      DEEPGO_RELEASE: ${DEEPGO_RELEASE:-1.0.18}
+      DOWNLOAD_ASSETS: ${DOWNLOAD_ASSETS:-1}
+    volumes:
+      - assets:/opt/dgpp_assets
+      - release_data:/opt-data/extracted
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_started}
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+
+  worker:
+    build: .
+    command: ["worker"]
+    environment:
+      DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me}
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      DGPP_ASSETS: /opt/dgpp_assets
+      RELEASE_DATA_ROOT: /opt-data/extracted/
+      DEEPGO_RELEASE: ${DEEPGO_RELEASE:-1.0.18}
+      DGPP_THREADS: ${DGPP_THREADS:-8}
+      DOWNLOAD_ASSETS: ${DOWNLOAD_ASSETS:-1}
+    volumes:
+      - assets:/opt/dgpp_assets
+      - release_data:/opt-data/extracted
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_started}
+
+  fuseki:
+    build:
+      context: ./sparql
+    environment:
+      DEEPGO_API_BASE: http://web:8000
+    depends_on:
+      web: {condition: service_started}
+    ports:
+      - "${FUSEKI_PORT:-3330}:3330"
+
+volumes:
+  pgdata:
+  assets:
+  release_data:

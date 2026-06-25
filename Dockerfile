@@ -1,0 +1,48 @@
+# DeepGOWeb — Django site + Celery prediction worker in one image.
+# Carries BOTH model stacks the site serves:
+#   * legacy DeepGOPlus  -> tensorflow-cpu (model.h5)
+#   * DG++Light (dgpp)   -> torch + fair-esm + the `diamond` binary
+# Large data/model assets are NOT baked in; they are pulled at container start by
+# docker/download_assets.sh from bio2vec.net (see docker/README.md).
+FROM python:3.11-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DJANGO_SETTINGS_MODULE=deepgoweb.settings.docker \
+    TORCH_HOME=/opt/torch \
+    DGPP_ASSETS=/opt/dgpp_assets \
+    RELEASE_DATA_ROOT=/opt-data/extracted/
+
+# --- system deps: curl (asset download), diamond (BLAST-KNN), libgomp (torch/tf) ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# DIAMOND static binary (matches the version used to build train_db.dmnd)
+ARG DIAMOND_VERSION=2.1.11
+RUN curl -fL "https://github.com/bbuchfink/diamond/releases/download/v${DIAMOND_VERSION}/diamond-linux64.tar.gz" \
+      | tar -xz -C /usr/local/bin diamond \
+    && diamond --version
+
+WORKDIR /app
+
+# --- python deps in three layers for cache friendliness ---
+COPY requirements.txt /app/requirements.txt
+RUN pip install -r requirements.txt
+# DG++Light extras: CPU torch + fair-esm (imported lazily by dgpp/predict.py)
+RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.2.2" \
+    && pip install "fair-esm==2.0.0"
+
+# --- app code ---
+COPY . /app
+
+# collectstatic needs no DB; give it throwaway env so the build never touches a service
+RUN DJANGO_SECRET_KEY=build POSTGRES_HOST=localhost \
+    python manage.py collectstatic --noinput || true
+
+RUN chmod +x docker/entrypoint.sh docker/download_assets.sh
+EXPOSE 8000
+ENTRYPOINT ["docker/entrypoint.sh"]
+# default: the web server. The worker overrides this in docker-compose.yml.
+CMD ["web"]

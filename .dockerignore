@@ -1,0 +1,21 @@
+.git
+**/__pycache__
+*.pyc
+venv/
+node_modules/
+deepgoweb/media/
+deepgoweb/public/
+# large model/data assets are downloaded at runtime, never baked into the image
+dgpp_assets/
+data/
+data-*/
+*.h5
+*.pkl
+*.npz
+*.dmnd
+**/*.tsv
+*.gz
+sparql/build/
+sparql/.gradle/
+yarn-error.log
+yarn.lock
