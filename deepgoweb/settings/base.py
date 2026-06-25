@@ -131,6 +131,9 @@ STORAGES = {
 # JSONs ship in apps/deepgo/dgpp/models, the data assets (DIAMOND DB + train labels +
 # go-dag + cnn weights) live under ASSETS. Hidden from the form/API if ENABLED is off
 # or the DIAMOND DB is absent. See apps/deepgo/dgpp/README.md.
+# Jena Fuseki SPARQL backend that the /ds/query proxy forwards to (see deepgo.views).
+FUSEKI_URL = os.environ.get('FUSEKI_URL', 'http://localhost:3330/ds/query')
+
 DGPP_LIGHT = {
     'ENABLED': os.environ.get('DGPP_ENABLED', '1') == '1',
     'ASSETS': os.environ.get('DGPP_ASSETS', os.path.join(BASE_DIR, '..', 'dgpp_assets')),

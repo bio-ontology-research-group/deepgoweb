@@ -13,6 +13,33 @@ import gzip
 from io import BytesIO
 from django.utils import timezone
 import csv
+import requests
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+def sparql_proxy(request):
+    """Forward SPARQL queries from the on-page editor to the Jena Fuseki backend
+    (settings.FUSEKI_URL). Lets the SPARQL UI work where the Fuseki service isn't
+    fronted by a separate reverse proxy; production may still route /ds via nginx."""
+    backend = getattr(settings, 'FUSEKI_URL', 'http://localhost:3330/ds/query')
+    accept = request.META.get('HTTP_ACCEPT', 'application/sparql-results+json')
+    try:
+        if request.method == 'POST':
+            resp = requests.post(
+                backend, data=request.body, timeout=300,
+                headers={'Content-Type': request.META.get('CONTENT_TYPE',
+                                                           'application/x-www-form-urlencoded'),
+                         'Accept': accept})
+        else:
+            resp = requests.get(backend, params=request.GET.dict(),
+                                headers={'Accept': accept}, timeout=300)
+    except requests.RequestException as exc:
+        return HttpResponse('SPARQL backend unavailable: %s' % exc, status=502)
+    return HttpResponse(
+        resp.content, status=resp.status_code,
+        content_type=resp.headers.get('Content-Type', 'application/sparql-results+json'))
 
 
 class SparqlFormView(TemplateView):

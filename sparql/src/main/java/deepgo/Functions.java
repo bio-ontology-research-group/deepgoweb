@@ -13,9 +13,18 @@ import org.apache.http.impl.client.*;
 
 public class Functions {
     
-    public static final String DEEPGO_API_URI = "http://localhost/deepgo/api/create";
+    // Base URL of the Django app the property functions call back into. Defaults to
+    // http://localhost (nginx-fronted prod); override for other deployments via the
+    // DEEPGO_API_BASE env var or -Ddeepgo.api.base=... system property.
+    private static String apiBase() {
+        String b = System.getenv("DEEPGO_API_BASE");
+        if (b == null || b.isEmpty())
+            b = System.getProperty("deepgo.api.base", "http://localhost");
+        return b.replaceAll("/+$", "");
+    }
+    public static final String DEEPGO_API_URI = apiBase() + "/deepgo/api/create";
     // Predictor-aware endpoint (backwards-compatible addition; see deepgo.rest_views).
-    public static final String DEEPGO_PREDICT_URI = "http://localhost/deepgo/api/predict";
+    public static final String DEEPGO_PREDICT_URI = apiBase() + "/deepgo/api/predict";
     public static final String NAMESPACE = "http://deepgoplus.bio2vec.net/";
 
     public static ArrayList<String[]> deepgo(String sequence, double threshold) {

@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 from .views import HomePageView
 from django.conf import settings
 from django.views.generic import TemplateView
+from deepgo.views import sparql_proxy
 
 urlpatterns = [
     path('', HomePageView.as_view(), name='home'),
@@ -27,6 +28,8 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('deepgo/', include('deepgo.urls')),
     path('deepgo/api/', include('deepgo.rest_urls')),
+    # SPARQL editor backend: forward /ds/query to the Jena Fuseki service.
+    path('ds/query', sparql_proxy, name='sparql-proxy'),
     path('doc/', TemplateView.as_view(template_name='doc.html'), name='documentation'),
     path('contacts', TemplateView.as_view(template_name="contacts.html"), name='contacts'),
     path('healthcheck', TemplateView.as_view(template_name="health.html")),
