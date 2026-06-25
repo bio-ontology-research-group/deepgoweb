@@ -38,6 +38,8 @@
           <li class="nav-item"><a class="nav-link scrollto" href="#item-3-1">DeepGOPlus CNN Model</a></li>
           <li class="nav-item"><a class="nav-link scrollto"
           href="#item-3-2">Sequence Similarity Predictions</a></li>
+          <li class="nav-item"><a class="nav-link scrollto"
+          href="#item-3-3">DeepGO-PlusPlus-Light</a></li>
         </ul>
       </nav><!--//docs-nav-->
     </div><!--//docs-sidebar-->
@@ -47,17 +49,20 @@
           <header class="docs-header">
             <h1 class="docs-heading">DeepGOWeb function prediction webserver<!-- <span class="docs-time">Last updated: </span>--></h1>
             <section class="docs-intro">
-              <p>DeepGOWeb is a webserver for DeepGOPlus
-                protein function prediction. It allows users to obtain
-                predicted protein functions in three different ways. First, 
-                using the <a href="{% url "prediction"%}">Prediction</a> web page, users can
-                submit protein sequences and obtain predictions which are downloadable in
-                JSON format. Second, DeepGOWeb provides a <a href="{%
-                url "api"%}">REST
-                  API</a> for users to access our servers
+              <p>DeepGOWeb is a webserver for protein function prediction. It
+                offers two models: <strong>DeepGOPlus</strong> (a convolutional
+                sequence model combined with DIAMOND homology transfer) and
+                <strong>DeepGO-PlusPlus-Light</strong>, a CPU-only multi-evidence
+                ensemble (DIAMOND, STRING-Net, a hierarchy-aware CNN, ESM2
+                embeddings and ProteInfer combined by a learned integrator).
+                Predictions are available in three ways. First, using the
+                <a href="{% url "prediction"%}">Prediction</a> web page, users can
+                submit protein sequences and obtain predictions which are
+                downloadable in JSON/CSV format. Second, DeepGOWeb provides a
+                <a href="{% url "api-predictions-create"%}">REST API</a> for accessing the service
                 programmatically. Finally, users can use our
-                <a href="{% url "sparql"%}">SPARQL
-                endpoint</a> to call DeepGOPlus within a SPARQL query.</p>
+                <a href="{% url "sparql"%}">SPARQL endpoint</a> to call the
+                predictors within a SPARQL query.</p>
             </section><!--//docs-intro-->
             <section class="docs-section" id="item-1-1">
 	      <h2 class="section-heading">Web page for submitting
@@ -73,6 +78,26 @@
                       <li>Data: Protein sequences in the selected
                       format. A maximum of 10 sequences are allowed in one request.</li>
                     </ul>
+                  </p>
+                  <p>
+                    Additional options:
+                    <ul>
+                      <li><strong>Prediction model</strong>: choose
+                        <em>DeepGOPlus</em> (CNN + DIAMOND) or
+                        <em>DeepGO-PlusPlus-Light</em>, the CPU multi-evidence
+                        ensemble. For the latter, the result page also shows each
+                        individual predictor's output under
+                        <em>"Individual predictor outputs"</em>.</li>
+                      <li><strong>Show only the most specific terms</strong> (on by
+                        default): contracts each aspect to the most specific
+                        predicted GO terms, hiding ancestors above the threshold
+                        that are implied by a more specific descendant. The full
+                        propagated set is always available in the JSON/CSV export.</li>
+                    </ul>
+                    Obsolete GO terms in a prediction are automatically
+                    transferred to their replacement (via the GO
+                    <code>replaced_by</code>/<code>consider</code> fields), or
+                    flagged, rather than dropped.
                   </p>
               <p>
                 After submitting the request, users will be redirected
@@ -114,11 +139,38 @@
 
 sequence = "MPYKLKKEKEPPKVAKCTAKPSSSGKDGGGENTEEAQPQPQPQPQPQAQSQPPSSNKRPSNSTPPPTQLSKIKYSGGPQIVKKERRQSSSRFNLSKNRELQKLPALKDSPTQEREELFIQKLRQCCVLFDFVSDPLSDLKFKEVKRAGLNEMVEYITHSRDVVTEAIYPEAVTMFSVNLFRTLPPSSNPTGAEFDPEEDEPTLEAAWPHLQLVYEFFLRFLESPDFQPNIAKKYIDQKFVLALLDLFDSEDPRERDFLKTILHRIYGKFLGLRAYIRRQINHIFYRFIYETEHHNGIAELLEILGSIINGFALPLKEEHKMFLIRVLLPLHKVKSLSVYHPQLAYCVVQFLEKESSLTEPVIVGLLKFWPKTHSPKEVMFLNELEEILDVIEPSEFSKVMEPLFRQLAKCVSSPHFQVAERALYYWNNEYIMSLISDNAARVLPIMFPALYRNSKSHWNKTIHGLIYNALKLFMEMNQKLFDDCTQQYKAEKQKGRFRMKEREEMWQKIEELARLNPQYPMFRAPPPLPPVYSMETETPTAEDIQLLKRTVETEAVQMLKDIKKEKVLLRRKSELPQDVYTIKALEAHKRAEEFLTASQEAL"
 threshold = 0.3
-r = requests.post('http://deepgoplus.bio2vec.net/deepgo/api/create', data={'data_format': 'enter', 'data': sequence, 'threshold': threshold})                
+r = requests.post('http://deepgoplus.bio2vec.net/deepgo/api/create', data={'data_format': 'enter', 'data': sequence, 'threshold': threshold})
 result = r.json()
               </pre>
             </div>
-            
+
+            <h3 class="pt-3">Choosing a model and getting component outputs</h3>
+            <p>A second, backwards-compatible endpoint
+              <code>/deepgo/api/predict</code> takes an extra
+              <code>predictor</code> field. Use <code>"deepgoplus"</code> (the
+              default) for the model above, or <code>"dgpp-light"</code> for the
+              CPU-only DeepGO-PlusPlus-Light ensemble. For
+              <code>dgpp-light</code> the response additionally includes a
+              <code>components</code> field with each individual predictor's own
+              top GO terms (DIAMOND, STRING-Net, the hierarchy-aware CNN, the
+              ESM2 embedding kNN and head, and ProteInfer).</p>
+            <div class="docs-code-block">
+              <pre>import requests
+
+r = requests.post('http://deepgoplus.bio2vec.net/deepgo/api/predict',
+                  json={'predictor': 'dgpp-light',
+                        'data_format': 'enter',
+                        'data': sequence,
+                        'threshold': 0.1})
+result = r.json()
+integrated = result['predictions'][0]['functions']   # combined GO predictions
+components = result['components'][0]                   # {component_label: [[go_id, name, score], ...]}
+              </pre>
+            </div>
+            <p class="text-secondary"><small>The original
+              <code>/deepgo/api/create</code> endpoint is unchanged; clients that
+              do not send <code>predictor</code> keep the original behaviour.</small></p>
+
 	    </section><!--//section-->
 	    <section class="docs-section" id="item-1-4">
 	      <h2 class="section-heading">SPARQL</h2>
@@ -129,6 +181,23 @@ result = r.json()
       returns the predicted functions along with the subontology, label,
       and prediction score. The output can be downloaded in different
       formats such as json, xml, csv or text.
+    </p>
+    <p>
+      Two additional property functions let you select the prediction model and
+      inspect its internals (the original <code>dg:deepgo</code> function is
+      unchanged):
+      <ul>
+        <li><code>dg:predict(?sequence ?threshold ?predictor)</code> — like
+          <code>dg:deepgo</code> but with an extra <em>predictor</em> argument,
+          e.g. <code>"dgpp-light"</code> (the CPU DeepGO-PlusPlus-Light ensemble)
+          or <code>"deepgoplus"</code> (default). Binds
+          <code>(?subontology ?go ?label ?score)</code>.</li>
+        <li><code>dg:components(?sequence ?threshold ?predictor)</code> — returns
+          each individual predictor substream (DIAMOND, STRING-Net, the
+          hierarchy-aware CNN, ESM2 kNN and head, ProteInfer) separately. The
+          first bound variable is the component name:
+          <code>(?component ?go ?label ?score)</code>.</li>
+      </ul>
     </p>
     <p>
       Example queries:
@@ -173,6 +242,30 @@ SELECT DISTINCT ?protein ?organism ?isoform ?aa_sequence
 LIMIT 2
 }
 (?sub ?go ?label ?score) dg:deepgo(?aa_sequence 0.3) .
+}
+    </xmp></pre>
+        </li>
+        <li>Example 3: Run the DeepGO-PlusPlus-Light model with
+          <code>dg:predict</code>
+         <pre><xmp>PREFIX dg: <http://deepgoplus.bio2vec.net/functions#>
+PREFIX GO: <http://purl.obolibrary.org/obo/GO_>
+
+SELECT ?ont ?go ?label ?score
+{
+ (?ont ?go ?label ?score)
+     dg:predict("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL" 0.1 "dgpp-light") .
+}
+    </xmp></pre>
+        </li>
+        <li>Example 4: Inspect the individual predictor substreams with
+          <code>dg:components</code> (the first variable is the component name)
+         <pre><xmp>PREFIX dg: <http://deepgoplus.bio2vec.net/functions#>
+PREFIX GO: <http://purl.obolibrary.org/obo/GO_>
+
+SELECT ?component ?go ?label ?score
+{
+ (?component ?go ?label ?score)
+     dg:components("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL" 0.1 "dgpp-light") .
 }
     </xmp></pre>
         </li>
@@ -271,19 +364,42 @@ LIMIT 2
               the relative importance of the two prediction methods.
             </p>
           </section><!--//section-->
+          <section class="docs-section" id="item-3-3">
+            <h2 class="section-heading">DeepGO-PlusPlus-Light</h2>
+            <p>
+              DeepGO-PlusPlus-Light is a CPU-only, multi-evidence ensemble aimed
+              at generalising to novel proteins. It combines several heterogeneous
+              components with a learned per-aspect logistic-regression integrator:
+            </p>
+            <ul>
+              <li><strong>DIAMOND BLAST-KNN</strong> — GO transfer from sequence homologs.</li>
+              <li><strong>STRING Net-KNN</strong> — a homology-bridged protein-network signal.</li>
+              <li><strong>Hierarchy-aware CNN</strong> — a 1D sequence CNN trained with the
+                C-HMCNN Max-Constraint Module over the GO <em>is_a</em> &cup; <em>part_of</em> DAG.</li>
+              <li><strong>ESM2-35M embedding kNN</strong> — nearest-neighbour GO transfer over
+                ESM2 protein language-model embeddings.</li>
+              <li><strong>ESM2-35M hierarchy-aware head</strong> — a parametric per-aspect head
+                over the same ESM2 embedding, also trained with the Max-Constraint Module.</li>
+              <li><strong>ProteInfer</strong> — a sequence CNN GO predictor.</li>
+            </ul>
+            <p>
+              Because every component runs on CPU, the model is served without a
+              GPU. The result page exposes each component's own top predictions in
+              an <em>"Individual predictor outputs"</em> section, and the same
+              substreams are available through the <code>/deepgo/api/predict</code>
+              endpoint and the <code>dg:components</code> SPARQL function.
+            </p>
+          </section><!--//section-->
         </article><!--//docs-article-->
 
-      </div> 
+      </div>
     </div>
   </div><!--//docs-wrapper-->
 </div>
 
-<script src="{% static "yarn/jquery/dist/jquery.min.js" %}"></script>
-<script src="{% static "yarn/popper.js/dist/umd/popper.min.js" %}"></script>
-<script src="{% static "yarn/bootstrap/dist/js/bootstrap.min.js" %}"></script>
-
+<!-- jQuery + Bootstrap 5 are already loaded in base.html -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.8/highlight.min.js"></script>
 <script src="{% static "yarn/jquery.scrollto/jquery.scrollTo.min.js" %}"></script>
-<script src="{% static "yarn/ekko-lightbox/dist/ekko-lightbox.min.js" %}"></script> 
-<script src="{% static "js/doc.js" %}"></script> 
+<script src="{% static "yarn/ekko-lightbox/dist/ekko-lightbox.min.js" %}"></script>
+<script src="{% static "js/doc.js" %}"></script>
 {% endblock %}

@@ -113,12 +113,11 @@ SELECT ?ont ?go ?label ?score
       <div class="form-group row">
 	<label for="format" class="col-sm-3">Output format</label>
 	<div class="col-sm-9">
-	  <select id="format" name="format" class="form-control">
-	    <option value="">-----</option>
-	    <option>json</option>
-	    <option>text</option>
-	    <option>xml</option>
-	    <option>csv</option>
+	  <select id="format" name="format" class="form-select">
+	    <option value="text" selected>text</option>
+	    <option value="json">json</option>
+	    <option value="xml">xml</option>
+	    <option value="csv">csv</option>
 	  </select>
 	</div>
       </div>
