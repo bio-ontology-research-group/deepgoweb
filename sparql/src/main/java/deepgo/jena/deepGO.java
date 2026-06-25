@@ -15,7 +15,7 @@ import org.apache.jena.sparql.core.Var ;
 import org.apache.jena.sparql.engine.ExecutionContext ;
 import org.apache.jena.sparql.engine.QueryIterator ;
 import org.apache.jena.sparql.engine.binding.Binding ;
-import org.apache.jena.sparql.engine.binding.BindingMap ;
+import org.apache.jena.sparql.engine.binding.BindingBuilder ;
 import org.apache.jena.sparql.engine.binding.BindingFactory ;
 import org.apache.jena.sparql.engine.iterator.QueryIterPlainWrapper ;
 import org.apache.jena.sparql.pfunction.PFuncListAndList ;
@@ -26,7 +26,6 @@ import java.util.*;
 import org.json.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.jena.ext.xerces.util.URI;
 
 
 import org.apache.http.*;
@@ -99,14 +98,14 @@ public class deepGO extends PFuncListAndList {
             Iterator<Binding> it = Iter.map(
                     result.iterator(),
                     item -> {
-			BindingMap b = BindingFactory.create(binding);
+			BindingBuilder b = BindingFactory.builder(binding);
                         b.add(subVar, item[0]);
                         b.add(nodeVar, item[1]);
 			b.add(labelVar, item[2]);
 			b.add(scoreVar, item[3]);
-			return b;
+			return b.build();
 		    });
-            return new QueryIterPlainWrapper(it, execCxt);
+            return QueryIterPlainWrapper.create(it, execCxt);
             
         }
 

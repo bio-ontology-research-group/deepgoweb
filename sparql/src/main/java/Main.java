@@ -2,7 +2,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
-import org.apache.jena.fuseki.embedded.FusekiServer;
+import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.vocabulary.*;
@@ -35,7 +35,7 @@ public class Main {
 	logger.info("Run function is excecuted");
 	
 	FusekiServer.Builder fsb = FusekiServer.create()
-	    .setPort(this.port);
+	    .port(this.port);
 
 	final PropertyFunctionRegistry reg = PropertyFunctionRegistry
 	    .chooseRegistry(ARQ.getContext());
@@ -49,7 +49,7 @@ public class Main {
 		new ComponentsPropertyFunctionFactory());
 	PropertyFunctionRegistry.set(ARQ.getContext(), reg);
 	Dataset ds = DatasetFactory.create();
-	fsb.add("/ds", ds, true);
+	fsb.add("/ds", ds);
 
 	FusekiServer fs = fsb.build();
 	fs.start();
