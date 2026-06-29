@@ -61,9 +61,19 @@ services:
       DOWNLOAD_ASSETS: ${DOWNLOAD_ASSETS:-1}
       # Genome tab: where the worker reaches the gspa genome-scale service.
       GSPA_SERVICE_URL: ${GSPA_SERVICE_URL:-http://gspa:8000}
+      # ProteInfer (CPU): the worker shells `docker run` the isolated TF1.15 image
+      # (ProteInfer needs legacy tensorflow.contrib, can't share TF2.15, and can't
+      # use the Blackwell sm_120 GPU) against the host daemon via the mounted
+      # docker.sock. proteinfer_dir + TMPDIR are host-backed paths at MATCHING host
+      # paths so the nested bind-mounts resolve on the host daemon (docker-in-docker).
+      DGPP_PROTEINFER_DIR: ${DGPP_PROTEINFER_DIR:-/home/leechuck/dgpp_pf/proteinfer}
+      DGPP_PROTEINFER_DOCKER: ${DGPP_PROTEINFER_DOCKER:-dgpp-proteinfer:tf115}
+      TMPDIR: ${DGPP_PF_TMPDIR:-/home/leechuck/dgpp_pf/tmp}
     volumes:
       - assets:/opt/dgpp_assets
       - release_data:/opt-data/extracted
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/leechuck/dgpp_pf:/home/leechuck/dgpp_pf
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_started}
