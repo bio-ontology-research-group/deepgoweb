@@ -25,9 +25,19 @@ fetch(){ # url dest
   local url="$1" dest="$2"
   if [ -s "$dest" ]; then log "have $(basename "$dest")"; return 0; fi
   log "GET $url"
-  curl -fL --retry 5 --retry-delay 5 -o "$dest.part" "$url"
-  mv "$dest.part" "$dest"
+  # PID-unique temp so concurrent runs (web + worker share the volume) never
+  # collide on a single .part file; only publish if nobody beat us to it.
+  local part="$dest.$$.part"
+  curl -fL --retry 5 --retry-delay 5 -o "$part" "$url"
+  if [ -s "$dest" ]; then rm -f "$part"; else mv "$part" "$dest"; fi
 }
+
+# Serialize concurrent runs across the shared asset volumes: web and worker both
+# run this at boot, so without a lock they race (corrupt .part / crash on mv).
+# flock makes the second waiter skip everything (files already present).
+mkdir -p "$DGPP_ASSETS" "$RELEASE_DATA_ROOT"
+exec 9>"$DGPP_ASSETS/.download.lock"
+flock 9
 
 # --- 1. DG++Light (dgpp) bundle: the strictly-CPU multi-evidence predictor ---
 # Files resolved by deepgoweb/apps/deepgo/dgpp/__init__.py:build_predictor().
