@@ -33,6 +33,10 @@ RUN pip install -r requirements.txt
 # DG++Light extras: CPU torch + fair-esm (imported lazily by dgpp/predict.py)
 RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.2.2" \
     && pip install "fair-esm==2.0.0"
+# WSGI server for the `web` role (entrypoint runs `gunicorn`) + WhiteNoise so that
+# gunicorn serves the collected static files directly (no nginx in this deploy).
+# Separate layer so it doesn't bust the heavy requirements/torch layers above.
+RUN pip install "gunicorn==23.0.0" "whitenoise==6.8.2"
 
 # --- app code ---
 COPY . /app

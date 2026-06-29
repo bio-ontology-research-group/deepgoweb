@@ -17,12 +17,12 @@
         {% csrf_token %}
         {% for field in form %}
           {% if field.field.widget.input_type == 'checkbox' %}
-            <div class="form-check mb-3">
+            <div class="form-check mb-3" id="field-{{ field.name }}">
               {% render_field field class+="form-check-input" %}
               <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
             </div>
           {% else %}
-            <div class="mb-3">
+            <div class="mb-3" id="field-{{ field.name }}">
               {{ field.label_tag }}
               {% render_field field class+="form-control" %}
               {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
@@ -55,9 +55,11 @@
       <h3 class="h5 mt-2">Output</h3>
       <p class="text-secondary small mb-0">GO terms for Biological Process,
         Molecular Function and Cellular Component with confidence scores, plus
-        similar proteins. See an example
+        similar proteins.
+        {% if example_uuid %}See an example
         <a href="{% url 'prediction-detail' example_uuid %}">result</a> or the
-        <a href="{% url 'documentation' %}">documentation</a>. Results are
+        <a href="{% url 'documentation' %}">documentation</a>.{% else %}See the
+        <a href="{% url 'documentation' %}">documentation</a>.{% endif %} Results are
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY</a>
         and downloadable as JSON/CSV.</p>
     </div>
@@ -85,6 +87,16 @@ ALSIKDGVMVLSATHRYKKKYVTTLLYKPI</p>
       $('#id_data').val(sequence);
       $('#id_data_format option[value=' + format + ']').prop('selected', true);
     });
+
+    // Show the version dropdown matching the selected predictor (DeepGOPlus -> release;
+    // DG++Light -> dgpp_release). The non-selected one is hidden so users pick one version.
+    function toggleVersionFields() {
+      var isLight = $('#id_predictor').val() === 'dgpp-light';
+      $('#field-release').toggle(!isLight);
+      $('#field-dgpp_release').toggle(isLight);
+    }
+    $('#id_predictor').change(toggleVersionFields);
+    toggleVersionFields();
   });
 </script>
 {% endblock %}

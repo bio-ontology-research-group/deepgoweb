@@ -10,15 +10,38 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="mainnav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link {% if url_name == 'prediction' %}active{% endif %}" href="{% url 'prediction' %}">Prediction</a></li>
+      {# --- primary: the two annotation tools, distinguished by input scale --- #}
+      <ul class="navbar-nav me-auto nav-tools">
+        <li class="nav-item">
+          <a class="nav-link {% if url_name == 'prediction' %}active{% endif %}"
+             href="{% url 'prediction' %}" title="Predict GO functions for protein sequences">Proteins</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if url_name == 'genome' or url_name == 'genome-detail' %}active{% endif %}"
+             href="{% url 'genome' %}" title="Annotate a whole genome or metagenome (DeepGO-GSPA)">Genome</a>
+        </li>
+      </ul>
+      {# --- secondary: access + resources, de-emphasised behind a divider --- #}
+      <ul class="navbar-nav nav-meta align-items-lg-center">
         <li class="nav-item"><a class="nav-link {% if url_name == 'api-predictions-create' %}active{% endif %}" href="{% url 'api-predictions-create' %}">API</a></li>
         <li class="nav-item"><a class="nav-link {% if url_name == 'sparql' %}active{% endif %}" href="{% url 'sparql' %}">SPARQL</a></li>
-        <li class="nav-item"><a class="nav-link {% if url_name == 'documentation' %}active{% endif %}" href="{% url 'documentation' %}">Documentation</a></li>
+        <li class="nav-item"><a class="nav-link {% if url_name == 'documentation' %}active{% endif %}" href="{% url 'documentation' %}">Docs</a></li>
         <li class="nav-item"><a class="nav-link {% if url_name == 'changelog' %}active{% endif %}" href="{% url 'changelog' %}">Changelog</a></li>
         <li class="nav-item"><a class="nav-link {% if url_name == 'contacts' %}active{% endif %}" href="{% url 'contacts' %}">Contacts</a></li>
       </ul>
     </div>
   </div>
 </nav>
+<style>
+  /* Two-level nav: the annotation tools are primary; everything else is a
+     de-emphasised, right-aligned resource group separated by a divider. */
+  .navbar-deepgo .nav-tools .nav-link { font-weight: 700; font-size: 1.02rem; }
+  .navbar-deepgo .nav-meta .nav-link { color: var(--dg-muted); font-weight: 500; font-size: .85rem; }
+  @media (min-width: 992px) {
+    .navbar-deepgo .nav-meta {
+      border-left: 1px solid var(--dg-border); margin-left: .6rem; padding-left: .35rem;
+    }
+    .navbar-deepgo .nav-meta .nav-link { padding: .5rem .55rem; }
+  }
+</style>
 {% endwith %}

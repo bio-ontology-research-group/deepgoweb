@@ -20,17 +20,26 @@ dgpp_predictors = {}
 
 
 @task
-def predict_functions_dgpp(sequences, variant='mcm'):
+def predict_functions_dgpp(release_pk, sequences, variant='mcm'):
     """DeepGO-PlusPlus-Light predictions, in the SAME output shape as
     ``predict_functions``: list[(annots {go_id->score}, sim_prots {prot->bitscore})],
-    so the web view / serializer render path is unchanged."""
+    so the web view / serializer render path is unchanged.
+
+    ``release_pk`` selects a versioned DG++Light Release: its ``data_root`` is the
+    archived asset bundle, overriding settings.DGPP_LIGHT['ASSETS']. Predictors are
+    cached per (release, variant) so multiple versions can be served concurrently."""
     global dgpp_predictors
-    predictor = dgpp_predictors.get(variant)
+    cache_key = (release_pk, variant)
+    predictor = dgpp_predictors.get(cache_key)
     if predictor is None:
         from django.conf import settings
         from deepgo.dgpp import build_predictor
-        predictor = build_predictor(settings.DGPP_LIGHT, variant=variant)
-        dgpp_predictors[variant] = predictor
+        cfg = dict(settings.DGPP_LIGHT)
+        if release_pk is not None:
+            rel = Release.objects.get(pk=release_pk)
+            cfg['ASSETS'] = rel.data_root      # this version's archived bundle
+        predictor = build_predictor(cfg, variant=variant)
+        dgpp_predictors[cache_key] = predictor
     fasta = ''.join('>%d\n%s\n' % (i, s) for i, s in enumerate(sequences))
     # full cpu_lean: every configured CPU component (diam, net, cnn, esm2_knn,
     # proteinfer) -> the cpu_lean integrator; also return the raw per-component preds.
@@ -51,6 +60,82 @@ def predict_functions_dgpp(sequences, variant='mcm'):
                 per[label] = [[g, predictor.names.get(g, ''), round(float(s), 4)] for g, s in top]
         components.append(per)
     return out, components
+
+
+@task
+def annotate_genome(job_id):
+    """Run one DeepGO-GSPA genome-scale annotation by handing the job's inputs to
+    the separate ``gspa`` service (settings.GSPA_SERVICE_URL), then storing the
+    parsed per-contig metrics / annotations / enforcement log back on the job.
+
+    The heavy genome-scale work (CDS translation, prediction, SAT enforcement) is
+    all on the JVM side; this task is just the async bridge so the web request
+    returns immediately and the result page polls for completion."""
+    from django.conf import settings
+    import requests
+    from deepgo.models import GenomeJob
+
+    job = GenomeJob.objects.get(pk=job_id)
+    job.status = 'running'
+    job.save(update_fields=['status'])
+    try:
+        files = {}
+        if job.genome_data:
+            files['genome'] = (job.genome_filename or 'genome.fna', job.genome_data)
+        if job.gff3_data:
+            files['gff3'] = (job.gff3_filename or 'annotation.gff3', job.gff3_data)
+        if job.proteins_data:
+            files['proteins'] = (job.proteins_filename or 'proteins.faa', job.proteins_data)
+
+        data = {
+            'predictor': job.predictor,
+            'metrics_scope': job.metrics_scope,
+            'consistency_mode': job.consistency_mode,
+            'enforce_consistency': str(job.enforce_consistency).lower(),
+            'enforce_completeness': str(job.enforce_completeness).lower(),
+            'enforce_coherence': str(job.enforce_coherence).lower(),
+            'provenance': str(job.provenance).lower(),
+            'mag': str(job.mag).lower(),
+        }
+        if job.kingdom:
+            data['kingdom'] = job.kingdom
+        if job.taxon:
+            # User asserted an organism explicitly — assert it, no inference.
+            data['taxon'] = job.taxon
+            data['infer_taxon'] = 'false'
+        else:
+            # No assertion: infer the organism taxon from the predictions via the
+            # GO taxon constraints (Asaad-style) and report it — unless inference
+            # is disabled for this job (known-unreliable proteomes).
+            data['infer_taxon'] = str(job.infer_taxon).lower()
+
+        url = settings.GSPA_SERVICE_URL.rstrip('/') + '/annotate'
+        resp = requests.post(url, files=files, data=data,
+                             timeout=settings.GSPA_SERVICE_TIMEOUT)
+        if resp.status_code != 200:
+            # Surface the service's own detail (it forwards gspa-cli's stderr tail).
+            detail = resp.text
+            try:
+                detail = resp.json().get('detail', detail)
+            except Exception:
+                pass
+            raise RuntimeError(f'gspa service HTTP {resp.status_code}: {detail}')
+
+        result = resp.json()
+        job.annotations = result.get('annotations', [])
+        job.per_contig_metrics = result.get('per_contig_metrics', [])
+        job.enforcement_actions = result.get('enforcement_actions', [])
+        job.inferred_taxon = result.get('inferred_taxon')
+        job.taxon_inference = result.get('taxon_inference')
+        job.timing = result.get('timing')
+        job.log = result.get('log', '')
+        job.status = 'done'
+        job.save()
+    except Exception as exc:  # noqa: BLE001 — record any failure on the job
+        job.error = str(exc)[:5000]
+        job.status = 'error'
+        job.save(update_fields=['error', 'status'])
+    return job.status
 
 
 @task

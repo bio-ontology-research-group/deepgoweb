@@ -11,3 +11,6 @@ data-*/
 yarn.lock
 sparql/build/
 sparql/.gradle/
+
+# local docker env (secrets) — never commit
+.env

@@ -30,20 +30,40 @@
   </div>
 </div>
 
-<h2 class="h4 mb-3">Model releases</h2>
-{% for rel in object_list %}
-<div class="card">
+{% comment %}One predictor's release cards, each with its CAFA metrics table.{% endcomment %}
+{% for label, releases in sections %}
+<h2 class="h4 mb-3">{{ label }} releases</h2>
+{% for rel in releases %}
+<div class="card mb-3">
   <div class="card-header">
-    <h3 class="card-title">Version {{ rel.version }}</h3>
-    <p>Date: [{{ rel.date|date:"Y-m-d" }}]</p>
+    <h3 class="card-title h5 mb-0">Version {{ rel.version }}</h3>
+    <p class="mb-0 text-secondary">Date: {{ rel.date|date:"Y-m-d" }}</p>
   </div>
-  <div class="card-content">
-    <div class="card-body">
-      <div class="card-text">
-        {{ rel.notes|safe }}
-      </div>
-    </div>
+  <div class="card-body">
+    {% if rel.notes %}<div class="card-text">{{ rel.notes|safe }}</div>{% endif %}
+    {% if rel.cafa_metrics.all %}
+    <h4 class="h6 mt-3">Expected performance — CAFA6 reconstruction (IA-weighted F-max)</h4>
+    <table class="table table-sm table-bordered w-auto">
+      <thead><tr><th>Knowledge class</th><th>F-max</th><th>MF</th><th>BP</th><th>CC</th></tr></thead>
+      <tbody>
+        {% for m in rel.cafa_metrics.all %}
+        <tr>
+          <td>{{ m.get_knowledge_class_display }}</td>
+          <td><strong>{{ m.fmax|floatformat:3 }}</strong></td>
+          <td>{{ m.fmax_mf|floatformat:3|default:"&ndash;" }}</td>
+          <td>{{ m.fmax_bp|floatformat:3|default:"&ndash;" }}</td>
+          <td>{{ m.fmax_cc|floatformat:3|default:"&ndash;" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="small text-secondary mb-0">Protocol: {{ rel.cafa_metrics.all.0.protocol }}.
+      Computed offline on the leak-free CAFA6 reconstruction; see methods.</p>
+    {% endif %}
   </div>
 </div>
+{% empty %}
+<p class="text-secondary">No versions registered.</p>
+{% endfor %}
 {% endfor %}
 {% endblock %}

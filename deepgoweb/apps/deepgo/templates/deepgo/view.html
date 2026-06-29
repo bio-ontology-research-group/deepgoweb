@@ -2,6 +2,16 @@
 {% load widget_tweaks %}
 
 {% block content %}
+{% if object.release %}
+<p class="text-secondary mb-3"><small>
+  Model: <strong>{{ object.get_predictor_display }}</strong>, version {{ object.release.version }}.
+  {% with m=object.release.headline_metric %}{% if m %}
+    Expected CAFA6 F-max ({{ m.get_knowledge_class_display }}):
+    <strong>{{ m.fmax|floatformat:3 }}</strong>
+    (<a href="{% url 'changelog' %}">details</a>).
+  {% endif %}{% endwith %}
+</small></p>
+{% endif %}
 {% if object.contract %}
 <p class="text-muted"><small>Showing only the most specific predicted GO terms
 (redundant ancestors above the threshold are hidden). The full propagated set is

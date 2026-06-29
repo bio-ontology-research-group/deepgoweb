@@ -70,8 +70,10 @@ class PredictionGroupSerializer(serializers.ModelSerializer):
         self.instance = super(PredictionGroupSerializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
+        # Legacy endpoint: DeepGOPlus only -> never resolve 'latest' to a dgpp-light row.
         if rel_ver == 'latest':
-            release = Release.objects.order_by('-pk').first()
+            release = Release.objects.filter(
+                predictor_type='deepgoplus').order_by('-pk').first()
         else:
             release = Release.objects.get(version=rel_ver)
         self.instance.release = release
@@ -179,8 +181,10 @@ class PredictionGroupV2Serializer(serializers.ModelSerializer):
         self.instance = super(PredictionGroupV2Serializer, self).save()
         fmt = self.validated_data['data_format']
         data = self.validated_data['data']
+        # Resolve the version within the chosen predictor's archive.
         if rel_ver == 'latest':
-            release = Release.objects.order_by('-pk').first()
+            release = Release.objects.filter(
+                predictor_type=predictor).order_by('-pk').first()
         else:
             release = Release.objects.get(version=rel_ver)
         self.instance.release = release
@@ -193,7 +197,8 @@ class PredictionGroupV2Serializer(serializers.ModelSerializer):
         for i in range(n):
             sequences[i] = sequences[i].strip()
         if predictor == 'dgpp-light':
-            preds, components = predict_functions_dgpp.delay(sequences, 'mcm').get()
+            preds, components = predict_functions_dgpp.delay(
+                release.pk, sequences, 'mcm').get()
             self.instance.component_predictions = components
         else:
             preds = predict_functions.delay(release.pk, sequences).get()

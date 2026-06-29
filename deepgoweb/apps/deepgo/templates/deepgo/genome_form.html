@@ -1,0 +1,218 @@
+{% extends "deepgo/base.html" %}
+{% load widget_tweaks %}
+
+{% block head %}
+<style>
+  .gx-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  @media (min-width: 992px) { .gx-grid { grid-template-columns: 1.6fr 1fr; } }
+  .gx-sec { border: 1px solid var(--dg-border); border-radius: .9rem; padding: 1.1rem 1.25rem; margin-bottom: 1.1rem; background: #fff; }
+  .gx-sec > h3 { font-size: 1rem; margin: 0 0 .15rem; display: flex; align-items: center; gap: .5rem; }
+  .gx-sec > h3 .gx-num { width: 1.6rem; height: 1.6rem; border-radius: .5rem; background: #eef0fe; color: var(--dg-primary);
+    display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; }
+  .gx-sec > .gx-sub { color: var(--dg-muted); font-size: .85rem; margin: 0 0 .9rem 2.1rem; }
+  .gx-field { margin-bottom: 1rem; }
+  .gx-field .form-text { font-size: .82rem; color: var(--dg-muted); }
+  .gx-or { text-align: center; color: var(--dg-muted); font-size: .8rem; text-transform: uppercase;
+    letter-spacing: .08em; margin: .25rem 0 .75rem; position: relative; }
+  .gx-check { padding: .65rem .8rem; border: 1px solid var(--dg-border); border-radius: .6rem; margin-bottom: .6rem; }
+  .gx-check .form-text { font-size: .8rem; color: var(--dg-muted); margin-top: .15rem; }
+  .gx-steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+  .gx-steps li { position: relative; padding: 0 0 .9rem 2.1rem; counter-increment: s; }
+  .gx-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 1.5rem; height: 1.5rem;
+    border-radius: 50%; background: var(--dg-primary); color: #fff; font-size: .8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; }
+  .gx-steps li:not(:last-child)::after { content: ""; position: absolute; left: .72rem; top: 1.6rem; bottom: .1rem; width: 2px; background: var(--dg-border); }
+  .gx-steps strong { display: block; color: var(--dg-ink); font-size: .9rem; }
+  .gx-steps span { font-size: .82rem; color: var(--dg-muted); }
+  .gx-mono { font-family: ui-monospace, 'Menlo', monospace; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+  <h1 class="h2 mb-0">Genome-scale annotation</h1>
+  <span class="pill">DeepGO-GSPA</span>
+</div>
+<p class="text-secondary mb-4" style="max-width:48rem">
+  Annotate a whole genome or metagenome and assess it <strong>per contig</strong>. Every protein is
+  annotated with <span class="gx-mono">DeepGO-PlusPlus-Light</span> (a CPU multi-evidence ensemble);
+  GSPA then computes genome-scale quality metrics and can optionally enforce taxon consistency,
+  completeness and coherence over the Gene Ontology &mdash; recording full provenance for every call.
+</p>
+
+<form class="form" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+  <div class="gx-grid">
+    <div>
+      {# ---------------- 1. INPUT ---------------- #}
+      <div class="gx-sec">
+        <h3><span class="gx-num">1</span> Input data</h3>
+        <p class="gx-sub">A nucleotide genome (optionally with a GFF3), or pre-called proteins.</p>
+
+        <div class="gx-field">
+          {{ form.genome_file.label_tag }}
+          {% render_field form.genome_file class+="form-control" accept=".fa,.fna,.fasta,.txt" %}
+          <div class="form-text">{{ form.genome_file.help_text }}</div>
+          {% if form.genome_file.errors %}<div class="text-danger small">{{ form.genome_file.errors }}</div>{% endif %}
+        </div>
+        <div class="gx-field">
+          {{ form.gff3_file.label_tag }}
+          {% render_field form.gff3_file class+="form-control" accept=".gff,.gff3,.txt" %}
+          <div class="form-text">{{ form.gff3_file.help_text }}</div>
+        </div>
+
+        <div class="gx-or">— or —</div>
+
+        <div class="gx-field mb-0">
+          {{ form.proteins_file.label_tag }}
+          {% render_field form.proteins_file class+="form-control" accept=".fa,.faa,.fasta,.txt" %}
+          <div class="form-text">{{ form.proteins_file.help_text }}</div>
+        </div>
+      </div>
+
+      {# ---------------- 2. ORGANISM ---------------- #}
+      <div class="gx-sec">
+        <h3><span class="gx-num">2</span> Organism</h3>
+        <p class="gx-sub">Inferred from the predicted functions by default &mdash; override only if you already know it.</p>
+        <div class="gx-field">
+          {{ form.domain.label_tag }}
+          {% render_field form.domain class+="form-select" %}
+          <div class="form-text">{{ form.domain.help_text }}</div>
+        </div>
+        <div class="gx-check mb-0">
+          <div class="form-check">
+            {% render_field form.mag class+="form-check-input" %}
+            <label class="form-check-label fw-semibold" for="{{ form.mag.id_for_label }}">{{ form.mag.label }}</label>
+          </div>
+          <div class="form-text">{{ form.mag.help_text }}</div>
+        </div>
+      </div>
+
+      {# ---------------- 3. METRICS ---------------- #}
+      <div class="gx-sec">
+        <h3><span class="gx-num">3</span> Genome-scale metrics</h3>
+        <p class="gx-sub">Function predictor is fixed to
+          <span class="pill">DeepGO-PlusPlus-Light · CPU</span>
+          (DIAMOND BLAST-KNN + STRING Net-KNN + a learned integrator).</p>
+        <div class="gx-field mb-0">
+          {{ form.metrics_scope.label_tag }}
+          {% render_field form.metrics_scope class+="form-select" %}
+          <div class="form-text">{{ form.metrics_scope.help_text }}</div>
+        </div>
+      </div>
+
+      {# ---------------- 4. ENFORCEMENT (advanced) ---------------- #}
+      <details class="gx-sec" id="gx-enforce">
+        <summary style="cursor:pointer;font-weight:700">
+          <span class="gx-num" style="display:inline-flex">4</span>
+          Quality enforcement <span class="text-secondary fw-normal">— optional, off by default</span>
+        </summary>
+        <p class="gx-sub mt-2">Beyond <em>measuring</em> quality, GSPA can <em>repair</em> the prediction set.
+          Each action is consistency-gated and fully logged.</p>
+
+        <div class="gx-check">
+          <div class="form-check">
+            {% render_field form.enforce_consistency class+="form-check-input" id="id_enforce_consistency" %}
+            <label class="form-check-label fw-semibold" for="id_enforce_consistency">{{ form.enforce_consistency.label }}</label>
+          </div>
+          <div class="form-text">{{ form.enforce_consistency.help_text }}</div>
+          <div id="gx-consistency-mode" class="mt-2" style="display:none">
+            {{ form.consistency_mode.label_tag }}
+            {% render_field form.consistency_mode class+="form-select form-select-sm" %}
+            <div class="form-text">{{ form.consistency_mode.help_text }}</div>
+          </div>
+        </div>
+
+        <div class="gx-check">
+          <div class="form-check">
+            {% render_field form.enforce_completeness class+="form-check-input" %}
+            <label class="form-check-label fw-semibold" for="{{ form.enforce_completeness.id_for_label }}">{{ form.enforce_completeness.label }}</label>
+          </div>
+          <div class="form-text">{{ form.enforce_completeness.help_text }}</div>
+        </div>
+
+        <div class="gx-check">
+          <div class="form-check">
+            {% render_field form.enforce_coherence class+="form-check-input" %}
+            <label class="form-check-label fw-semibold" for="{{ form.enforce_coherence.id_for_label }}">{{ form.enforce_coherence.label }}</label>
+          </div>
+          <div class="form-text">{{ form.enforce_coherence.help_text }}</div>
+        </div>
+
+        <div class="gx-check mb-0">
+          <div class="form-check">
+            {% render_field form.provenance class+="form-check-input" %}
+            <label class="form-check-label fw-semibold" for="{{ form.provenance.id_for_label }}">{{ form.provenance.label }}</label>
+          </div>
+          <div class="form-text">{{ form.provenance.help_text }}</div>
+        </div>
+      </details>
+
+      <div class="mt-1">
+        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-dna me-2"></i>Annotate genome</button>
+      </div>
+      <div class="mt-3">
+        <div class="text-secondary small mb-2"><i class="fas fa-flask me-1"></i>Or try an example — one per domain of life:</div>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{% url 'genome-example' %}?organism=bacteria" class="btn btn-outline-secondary"><i class="fas fa-bacterium me-2"></i>Bacteria <span class="text-secondary">· E. coli (~450)</span></a>
+          <a href="{% url 'genome-example' %}?organism=eukaryote" class="btn btn-outline-secondary">Eukaryote <span class="text-secondary">· yeast (~150)</span></a>
+          <a href="{% url 'genome-example' %}?organism=archaea" class="btn btn-outline-secondary">Archaea <span class="text-secondary">· M. jannaschii (~150)</span></a>
+          <a href="{% url 'genome-example' %}?organism=phage" class="btn btn-outline-secondary"><i class="fas fa-virus me-2"></i>Phage <span class="text-secondary">· T4 (~290, complete)</span></a>
+        </div>
+        <div class="text-secondary small mt-2">The eukaryote <em>infers</em> its organism (yeast resolves all the way to <span class="gx-mono">Fungi</span>, not just the domain); the others exercise the rest of the pipeline but skip the taxon call &mdash; at genome scale the predictor's eukaryote-leaning calls overwhelm function-based inference for non-eukaryotes (see why on the result page).</div>
+      </div>
+      <p class="text-secondary mt-2 mb-0"><small>Runs asynchronously — you'll get a live result page.
+        Each example is ~22 genes and finishes in about a minute.</small></p>
+    </div>
+
+    {# ---------------- SIDEBAR: how it works ---------------- #}
+    <div>
+      <div class="card p-4 mb-3">
+        <h3 class="h6 text-uppercase text-secondary" style="letter-spacing:.05em">How it works</h3>
+        <ul class="gx-steps mt-3">
+          <li><strong>Genes &rarr; proteins</strong><span>CDS from your GFF3 are translated (or genes are called if you omit it).</span></li>
+          <li><strong>Function prediction</strong><span>Each protein is annotated with DeepGO-PlusPlus-Light against the Gene Ontology.</span></li>
+          <li><strong>Infer the organism</strong><span>The domain is read off the confident predictions via the GO taxon constraints (Asaad-style) &mdash; not assumed &mdash; and shown with its evidence.</span></li>
+          <li><strong>Per-contig metrics</strong><span>Completeness, coherence, consistency, information content &mdash; one row per contig.</span></li>
+          <li><strong>Optional enforcement</strong><span>Remove taxon-impossible terms, impute essentials, repair coherence (SAT4J).</span></li>
+          <li><strong>Provenance</strong><span>Every assigned (or removed) function is traced to its source.</span></li>
+        </ul>
+      </div>
+
+      <div class="card p-4">
+        <h3 class="h6 text-uppercase text-secondary" style="letter-spacing:.05em">The examples</h3>
+        <p class="text-secondary small mb-0 mt-2">Four demo genomes, one per domain of life, each assembled by
+          reverse-translating real proteins (so the predictions are genuine). The viral one is a <strong>complete
+          genome</strong> &mdash; the whole <em>phage T4</em> proteome (~290). The others are representative subsets
+          of much larger proteomes: <span class="gx-mono">Bacteria</span> (~450 <em>E. coli</em> proteins),
+          <span class="gx-mono">Eukaryota</span> (~150 baker's yeast) and <span class="gx-mono">Archaea</span>
+          (~150 <em>M. jannaschii</em>). The eukaryotic one <em>infers</em> the organism from the predicted
+          functions &mdash; yeast all the way down to <span class="gx-mono">Fungi</span>, not just the domain. The
+          others run the full pipeline (per-contig metrics, enforcement, timing) but skip the taxon call: at genome
+          scale the predictor leans toward eukaryote-associated GO terms, so for a bacterium, archaeon or virus the
+          mispredicted eukaryote-only calls outnumber the true taxon-specific signal and the call is suppressed
+          rather than assert a wrong organism. Predictions are reported down to a 0.5
+          confidence floor (the GO-DAG tail below that is pruned). No upload needed; each runs in a couple of
+          minutes.</p>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+  // Reveal the "action on inconsistent terms" selector only when enforcement is on.
+  (function () {
+    var cb = document.getElementById('id_enforce_consistency');
+    var box = document.getElementById('gx-consistency-mode');
+    function sync() { if (cb && box) box.style.display = cb.checked ? 'block' : 'none'; }
+    if (cb) { cb.addEventListener('change', sync); sync(); }
+    // Open the enforcement section if any of its boxes are already checked (e.g. re-render after a validation error).
+    var det = document.getElementById('gx-enforce');
+    if (det && det.querySelector('input[type=checkbox]:checked')) det.open = true;
+  })();
+</script>
+{% endblock %}

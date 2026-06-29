@@ -32,6 +32,14 @@ The download is idempotent (existing files are skipped). After the first run set
   (TensorFlow `model.h5`) and DG++Light (`diamond` + torch + fair-esm).
 - **fuseki** — embedded Jena Fuseki (`sparql/Dockerfile`); stateless, proxies the
   `dg:predict` / `dg:components` / `dg:deepgo` property functions to `web`.
+- **gspa** — the **Genome** tab's engine (DeepGO-GSPA): the JVM `gspa-cli` behind a
+  FastAPI endpoint, built from the sibling `gspa` repo (`build.context: ../gspa`,
+  `service/Dockerfile`). It shares the DG++Light `assets` volume (reuses
+  `train_db.dmnd` / `go.obo` / ...). The worker POSTs an uploaded genome+GFF3 to it;
+  it runs CDS translation → DG++Light → **per-contig** genome-scale metrics →
+  optional SAT taxon-consistency / completeness / coherence enforcement → provenance,
+  and returns the parsed tables. CPU-only. Tune with `GSPA_SERVICE_URL` (worker → service),
+  `GSPA_PORT`, `GSPA_THREADS`, `GSPA_SERVICE_TIMEOUT`.
 - **db** — Postgres; **redis** — Celery broker.
 
 ## Configuration (env)
