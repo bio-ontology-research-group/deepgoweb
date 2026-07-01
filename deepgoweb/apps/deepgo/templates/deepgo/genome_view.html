@@ -325,6 +325,11 @@
       <input type="hidden" name="action" value="download_csv"/>
       <button type="submit" class="btn btn-outline-secondary">Download table (CSV)</button>
     </form>
+    <form action="{% url 'genome-detail' object.uuid %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="download_rdf"/>
+      <button type="submit" class="btn btn-outline-secondary">Download RDF/Turtle</button>
+    </form>
     <a href="{% url 'genome' %}" class="btn btn-outline-primary">New genome</a>
   </div>
   <p class="gx-meta mt-2 mb-0"><strong>GAF 2.2</strong> is the Gene Ontology Consortium's standard

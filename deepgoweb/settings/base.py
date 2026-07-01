@@ -148,6 +148,7 @@ DGPP_LIGHT = {
     'ESM2_HEAD_MODEL': os.environ.get('DGPP_ESM2_HEAD_MODEL', ''),  # ESM2-35M MCM head (.pt)
     'PROTEINFER_DIR': os.environ.get('DGPP_PROTEINFER_DIR', ''),    # ProteInfer repo dir
     'PROTEINFER_DOCKER': os.environ.get('DGPP_PROTEINFER_DOCKER', ''),  # pre-built TF1.15 image
+    'DEVICE': os.environ.get('DGPP_DEVICE', 'cpu'),
 }
 
 # DeepGO-GSPA genome-scale annotation tab. The genome work (CDS translation,

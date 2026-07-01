@@ -93,4 +93,5 @@ def build_predictor(cfg, variant='light'):
         proteinfer_docker=cfg.get('PROTEINFER_DOCKER') or None,
         cpu_lean_model=cpu_lean,
         esm2_head_model=esm2_head if os.path.exists(esm2_head) else None,
+        device=cfg.get('DEVICE', 'cpu'),
     )

@@ -118,7 +118,7 @@ class DGppLight:
                  esm2_layer=12, emapper=None, eggnog_data=None,
                  psortb=None, psortb_gram='neg', proteinfer_dir=None,
                  cpu_lean_model=None, proteinfer_docker=None,
-                 esm2_head_model=None):
+                 esm2_head_model=None, device='cpu'):
         """models: dict {(interpro: bool, cnn: bool) -> path to frozen JSON}.
         Only the combinations whose model file exists are served.
 
@@ -151,6 +151,8 @@ class DGppLight:
         self.esm2_layer = esm2_layer
         self._esm2 = None          # lazy (model, batch_converter)
         self._store = None         # lazy (ids, l2-normalized emb)
+        self.device = device
+        self._cnn = None           # lazy (model, vocab, max_len, torch)
         # ESM2-35M hierarchy-aware (C-HMCNN/MCM) head — a parametric component over
         # the SAME mean-pooled ESM2-35M embedding the kNN uses (shared, one forward
         # pass per request via self._emb_cache).
@@ -249,15 +251,19 @@ class DGppLight:
         Provides sequence-based predictions for orphan proteins with no homolog."""
         if not self.cnn_model:
             raise RuntimeError('cnn=true but no CNN weights configured (DGPP_CNN_MODEL)')
-        import torch  # heavy; imported only when the CNN path is used
-        import build_cnn_component as bcc
-        ckpt = torch.load(self.cnn_model, map_location='cpu', weights_only=False)
-        vocab, max_len = ckpt['vocab'], ckpt['max_len']
-        model = bcc.build_cnn(len(vocab))
-        model.load_state_dict(ckpt['state_dict'])
-        model.eval()
+        if self._cnn is None:
+            import torch  # heavy; imported only when the CNN path is used
+            import build_cnn_component as bcc
+            ckpt = torch.load(self.cnn_model, map_location='cpu', weights_only=False)
+            vocab, max_len = ckpt['vocab'], ckpt['max_len']
+            model = bcc.build_cnn(len(vocab))
+            model.load_state_dict(ckpt['state_dict'])
+            model.to(self.device).eval()
+            self._cnn = (model, vocab, max_len, torch, bcc)
+        model, vocab, max_len, torch, bcc = self._cnn
         out = fasta_path + '.cnn.tsv'
-        bcc.predict(model, vocab, max_len, fasta_path, out, min_score, torch)
+        bcc.predict(model, vocab, max_len, fasta_path, out, min_score, torch,
+                    device=self.device)
         comp = defaultdict(dict)
         with open(out) as fh:
             for line in fh:
@@ -413,11 +419,14 @@ class DGppLight:
         if fasta_path in self._emb_cache:
             return self._emb_cache[fasta_path]
         import numpy as np
-        if self._esm2 is None:                        # lazy-load ESM2-35M (CPU)
+        if self._esm2 is None:                        # lazy-load ESM2-35M
             import torch, esm
+            if self.device.startswith('cuda') and not torch.cuda.is_available():
+                raise RuntimeError('DGPP_DEVICE=cuda requested but torch.cuda.is_available() is false')
             model, alphabet = getattr(esm.pretrained, self.esm2_name)()
             torch.set_num_threads(self.threads)
-            self._esm2 = (model.eval(), alphabet.get_batch_converter(), torch)
+            model = model.eval().to(self.device)
+            self._esm2 = (model, alphabet.get_batch_converter(), torch)
         model, bc, torch = self._esm2
         seqs = [(n, s) for n, s in read_fasta(open(fasta_path).read())]
         seqs.sort(key=lambda x: len(x[1]))            # length-sorted batching
@@ -425,11 +434,12 @@ class DGppLight:
         for i in range(0, len(seqs), 16):
             batch = [(n, s[:1022]) for n, s in seqs[i:i + 16]]
             _, _, toks = bc(batch)
+            toks = toks.to(self.device)
             with torch.no_grad():
                 rep = model(toks, repr_layers=[self.esm2_layer])['representations'][self.esm2_layer]
             for j, (n, s) in enumerate(batch):
                 L = min(len(s), 1022)
-                out[n] = rep[j, 1:L + 1].mean(0).numpy().astype('float32')
+                out[n] = rep[j, 1:L + 1].mean(0).cpu().numpy().astype('float32')
         self._emb_cache[fasta_path] = out
         return out
 
@@ -484,12 +494,12 @@ class DGppLight:
                         torch.nn.Dropout(0.3), torch.nn.Linear(hidden, n))
                 def forward(self, x):
                     return self.net(x)
-            ckpt = torch.load(self.esm2_head_model, map_location='cpu', weights_only=False)
+            ckpt = torch.load(self.esm2_head_model, map_location=self.device, weights_only=False)
             torch.set_num_threads(self.threads)
             heads = {}
             for aspect, a in ckpt['aspects'].items():
                 m = _HeadMLP(ckpt['dim'], len(a['terms']), ckpt.get('hidden', 1024))
-                m.load_state_dict(a['state_dict']); m.eval()
+                m.load_state_dict(a['state_dict']); m.to(self.device).eval()
                 heads[aspect] = (m, a['terms'])
             self._esm2_head = heads
         embs = self._esm2_embed(fasta_path)
@@ -497,10 +507,10 @@ class DGppLight:
         comp = defaultdict(dict)
         if not names:
             return comp
-        X = torch.tensor(np.stack([embs[n] for n in names]))
+        X = torch.tensor(np.stack([embs[n] for n in names]), device=self.device)
         with torch.no_grad():
             for aspect, (mlp, terms) in self._esm2_head.items():
-                P = torch.sigmoid(mlp(X)).numpy()
+                P = torch.sigmoid(mlp(X)).cpu().numpy()
                 for i, n in enumerate(names):
                     row = P[i]
                     for j in np.nonzero(row >= min_score)[0]:
@@ -554,6 +564,31 @@ class DGppLight:
                     os.unlink(opath)
             return results
         finally:
+            os.unlink(path)
+
+    def warmup(self):
+        """Load resident model weights/indexes before serving real requests.
+
+        This intentionally exercises the in-process components with one tiny
+        FASTA so PyTorch CUDA kernels, ESM2 weights, ESM2-head weights, CNN
+        weights and the ESM2 kNN store are initialized and then retained on the
+        predictor object. ProteInfer remains a separate TF1.15 Docker sidecar,
+        so its weights cannot be kept in this process without changing it into
+        a long-lived service.
+        """
+        fasta = '>warmup\nMSEQNNTEMTFQIQRIYTKDISFEAPNAPHVFQKDWKPEVKLDLDTASSQLADDVYEVVLRVTVTASGEVLVK\n'
+        with tempfile.NamedTemporaryFile('w', suffix='.faa', delete=False) as fh:
+            fh.write(fasta)
+            path = fh.name
+        try:
+            if self.cnn_model:
+                self._cnn_component(path, min_score=1.1)
+            if self.emb_store:
+                self._esm2_knn_component(path, topk=1, min_score=1.1)
+            if self.esm2_head_model:
+                self._esm2_head_component(path, min_score=1.1)
+        finally:
+            self._emb_cache.pop(path, None)
             os.unlink(path)
 
     def available(self):

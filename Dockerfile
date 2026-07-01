@@ -30,8 +30,12 @@ WORKDIR /app
 # --- python deps in three layers for cache friendliness ---
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
-# DG++Light extras: CPU torch + fair-esm (imported lazily by dgpp/predict.py)
-RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.2.2" \
+# DG++Light extras: torch + fair-esm (imported lazily by dgpp/predict.py).
+# Build with --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu128
+# for GPU inference in the Celery worker.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+ARG TORCH_SPEC=torch==2.2.2
+RUN pip install --index-url "${TORCH_INDEX}" "${TORCH_SPEC}" \
     && pip install "fair-esm==2.0.0"
 # WSGI server for the `web` role (entrypoint runs `gunicorn`) + WhiteNoise so that
 # gunicorn serves the collected static files directly (no nginx in this deploy).

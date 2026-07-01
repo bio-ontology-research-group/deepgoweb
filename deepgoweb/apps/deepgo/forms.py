@@ -3,7 +3,7 @@ from django.utils.safestring import mark_safe
 from deepgo.models import GenomeJob, Prediction, PredictionGroup, Release
 import datetime
 from django.conf import settings
-from deepgo.tasks import predict_functions, predict_functions_dgpp
+from deepgo.tasks import predict_functions, predict_group_dgpp
 from django.core.exceptions import ValidationError
 from deepgo.utils import (
     read_fasta)
@@ -28,13 +28,14 @@ class PredictionForm(forms.ModelForm):
     dgpp_release = forms.ModelChoiceField(
         Release.objects.filter(predictor_type='dgpp-light').order_by('-pk'),
         required=False, empty_label=None,
-        label=mark_safe('DG++Light version (see <a href="/deepgo/changelog">changelog</a>)'))
+        label=mark_safe('Release version (see <a href="/deepgo/changelog">changelog</a>)'))
 
     threshold = forms.FloatField(
         initial=0.3,
         min_value=0.0, max_value=1.0,
         widget=forms.NumberInput(attrs={'step':0.1}),
-        label='Prediction threshold')
+        label='Prediction threshold',
+        help_text='Default: 0.3 for DeepGOPlus, 0.5 for DeepGO-PlusPlus-Light.')
 
     predictor = forms.ChoiceField(
         choices=PredictionGroup.PREDICTOR_CHOICES, initial='deepgoplus',
@@ -62,6 +63,9 @@ class PredictionForm(forms.ModelForm):
             self.fields['predictor'].choices = [PredictionGroup.PREDICTOR_CHOICES[0]]
             self.fields.pop('dgpp_release', None)
         self.fields['data_format'].label = 'Input Format (FASTA/Raw)'
+        self.order_fields([
+            'predictor', 'release', 'dgpp_release', 'data_format', 'threshold',
+            'contract', 'data'])
 
     def clean(self):
         cleaned = super().clean()
@@ -113,12 +117,23 @@ class PredictionForm(forms.ModelForm):
         predictor = self.cleaned_data.get('predictor', 'deepgoplus')
         if predictor == 'dgpp-light':
             # DeepGO-PlusPlus-Light: the selected version's archived bundle; also
-            # returns each component's own top predictions for display.
+            # returns each component's own top predictions for display. This path
+            # is asynchronous because the CPU ensemble can take long enough that a
+            # browser-level POST looks stuck.
             release = self.cleaned_data['dgpp_release']
             self.instance.release = release
-            preds, components = predict_functions_dgpp.delay(
-                release.pk, sequences, 'mcm').get()
-            self.instance.component_predictions = components
+            self.instance.save()
+            predictions = list()
+            for i in range(n):
+                if fmt == 'enter':
+                    pred = Prediction(sequence=sequences[i], group=self.instance)
+                else:
+                    pred = Prediction(protein_info=info[i], sequence=sequences[i],
+                                      group=self.instance)
+                predictions.append(pred)
+            Prediction.objects.bulk_create(predictions)
+            predict_group_dgpp.delay(self.instance.pk, release.pk, sequences, 'mcm')
+            return self.instance
         else:
             release = self.cleaned_data['release']
             self.instance.release = release
@@ -177,12 +192,14 @@ class GenomeForm(forms.ModelForm):
     genome_file = forms.FileField(
         required=False, label='Genome / metagenome FASTA',
         help_text='Nucleotide FASTA, one contig per record (a chromosome, a MAG, '
-                  'or many contigs). This is the primary input.')
+                  'or many contigs). If you omit GFF3, genes are called '
+                  'automatically for prokaryotes only.')
     gff3_file = forms.FileField(
         required=False, label='Gene annotation (GFF3, optional)',
         help_text='If supplied, the CDS in it are translated and mapped to their '
-                  'contig instead of calling genes. Produce one with Prodigal, '
-                  'Prokka or Bakta. Omit it and genes are called automatically.')
+                  'contig instead of calling genes. For eukaryotes, viruses, or '
+                  'any assembly with introns/non-standard gene models, provide '
+                  'GFF3 or upload proteins directly.')
     proteins_file = forms.FileField(
         required=False, label='Protein FASTA (alternative to a genome)',
         help_text='Already have predicted proteins? Upload them instead of a '
@@ -249,6 +266,14 @@ class GenomeForm(forms.ModelForm):
         if not cleaned.get('genome_file') and not cleaned.get('proteins_file'):
             raise ValidationError(
                 'Provide a genome FASTA (or a protein FASTA).')
+        if cleaned.get('genome_file') and not cleaned.get('gff3_file'):
+            domain = cleaned.get('domain', 'auto')
+            if domain not in ('bacteria', 'archaea'):
+                raise ValidationError(
+                    'Automatic gene calling is only supported for prokaryotic '
+                    'genomes. Select Bacteria or Archaea to call genes from a '
+                    'genome FASTA, or provide a GFF3 file / protein FASTA for '
+                    'eukaryotes, viruses, or unknown organisms.')
         return cleaned
 
     def save(self, commit=True):

@@ -30,7 +30,10 @@
             </div>
           {% endif %}
         {% endfor %}
-        <button type="submit" class="btn btn-primary btn-lg">
+        <div id="prediction-progress" class="alert alert-info d-none" role="status">
+          Starting prediction. The result page will open immediately and refresh until DeepGO-PlusPlus-Light finishes.
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" id="prediction-submit">
           <i class="fas fa-flask me-2"></i>Submit</button>
       </form>
     </div>
@@ -88,15 +91,37 @@ ALSIKDGVMVLSATHRYKKKYVTTLLYKPI</p>
       $('#id_data_format option[value=' + format + ']').prop('selected', true);
     });
 
+    var initialThreshold = $('#id_threshold').val();
+    var thresholdEdited = initialThreshold && initialThreshold !== '0.3' && initialThreshold !== '0.5';
+    $('#id_threshold').on('input change', function() {
+      thresholdEdited = true;
+    });
+
     // Show the version dropdown matching the selected predictor (DeepGOPlus -> release;
     // DG++Light -> dgpp_release). The non-selected one is hidden so users pick one version.
+    // DG++Light is denser after GO propagation, so use a stricter display default.
     function toggleVersionFields() {
       var isLight = $('#id_predictor').val() === 'dgpp-light';
       $('#field-release').toggle(!isLight);
       $('#field-dgpp_release').toggle(isLight);
+      if (!thresholdEdited) {
+        $('#id_threshold').val(isLight ? '0.5' : '0.3');
+      }
     }
     $('#id_predictor').change(toggleVersionFields);
     toggleVersionFields();
+
+    $('form.form').on('submit', function() {
+      var isLight = $('#id_predictor').val() === 'dgpp-light';
+      $('#prediction-progress')
+        .toggleClass('d-none', false)
+        .text(isLight
+          ? 'Starting DeepGO-PlusPlus-Light. The result page will open immediately and refresh until the prediction finishes.'
+          : 'Running DeepGOPlus. The result page will open automatically.');
+      $('#prediction-submit')
+        .prop('disabled', true)
+        .html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Running');
+    });
   });
 </script>
 {% endblock %}

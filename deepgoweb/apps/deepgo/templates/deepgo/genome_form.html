@@ -25,6 +25,8 @@
   .gx-steps strong { display: block; color: var(--dg-ink); font-size: .9rem; }
   .gx-steps span { font-size: .82rem; color: var(--dg-muted); }
   .gx-mono { font-family: ui-monospace, 'Menlo', monospace; }
+  .gx-example { border: 1px solid var(--dg-border); border-radius: .65rem; padding: .7rem .85rem; }
+  .gx-example .btn { white-space: nowrap; }
 </style>
 {% endblock %}
 
@@ -154,14 +156,42 @@
         <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-dna me-2"></i>Annotate genome</button>
       </div>
       <div class="mt-3">
-        <div class="text-secondary small mb-2"><i class="fas fa-flask me-1"></i>Or try an example — one per domain of life:</div>
-        <div class="d-flex flex-wrap gap-2">
-          <a href="{% url 'genome-example' %}?organism=bacteria" class="btn btn-outline-secondary"><i class="fas fa-bacterium me-2"></i>Bacteria <span class="text-secondary">· E. coli (~450)</span></a>
-          <a href="{% url 'genome-example' %}?organism=eukaryote" class="btn btn-outline-secondary">Eukaryote <span class="text-secondary">· yeast (~150)</span></a>
-          <a href="{% url 'genome-example' %}?organism=archaea" class="btn btn-outline-secondary">Archaea <span class="text-secondary">· M. jannaschii (~150)</span></a>
-          <a href="{% url 'genome-example' %}?organism=phage" class="btn btn-outline-secondary"><i class="fas fa-virus me-2"></i>Phage <span class="text-secondary">· T4 (~290, complete)</span></a>
+        <div class="text-secondary small mb-2"><i class="fas fa-flask me-1"></i>Load an example into the form:</div>
+        <div class="d-grid gap-2">
+          <div class="gx-example d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary gx-load-example"
+                    data-organism="bacteria" data-domain="bacteria">
+              <i class="fas fa-bacterium me-2"></i>Bacteria <span class="text-secondary">· E. coli</span>
+            </button>
+            <a href="{% url 'genome-example' %}?organism=bacteria&file=fna">FASTA</a>
+            <a href="{% url 'genome-example' %}?organism=bacteria&file=gff3">GFF3</a>
+          </div>
+          <div class="gx-example d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary gx-load-example"
+                    data-organism="archaea" data-domain="archaea">
+              Archaea <span class="text-secondary">· M. jannaschii</span>
+            </button>
+            <a href="{% url 'genome-example' %}?organism=archaea&file=fna">FASTA</a>
+            <a href="{% url 'genome-example' %}?organism=archaea&file=gff3">GFF3</a>
+          </div>
+          <div class="gx-example d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary gx-load-example"
+                    data-organism="eukaryote" data-domain="eukaryote">
+              Eukaryote <span class="text-secondary">· yeast</span>
+            </button>
+            <a href="{% url 'genome-example' %}?organism=eukaryote&file=fna">FASTA</a>
+            <a href="{% url 'genome-example' %}?organism=eukaryote&file=gff3">GFF3</a>
+          </div>
+          <div class="gx-example d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary gx-load-example"
+                    data-organism="phage" data-domain="virus">
+              <i class="fas fa-virus me-2"></i>Phage <span class="text-secondary">· T4</span>
+            </button>
+            <a href="{% url 'genome-example' %}?organism=phage&file=fna">FASTA</a>
+            <a href="{% url 'genome-example' %}?organism=phage&file=gff3">GFF3</a>
+          </div>
         </div>
-        <div class="text-secondary small mt-2">The eukaryote <em>infers</em> its organism (yeast resolves all the way to <span class="gx-mono">Fungi</span>, not just the domain); the others exercise the rest of the pipeline but skip the taxon call &mdash; at genome scale the predictor's eukaryote-leaning calls overwhelm function-based inference for non-eukaryotes (see why on the result page).</div>
+        <div class="text-secondary small mt-2">Examples only fill the fields; press <strong>Annotate genome</strong> when you are ready. Download links expose the exact input files so you can inspect or adapt them.</div>
       </div>
       <p class="text-secondary mt-2 mb-0"><small>Runs asynchronously — you'll get a live result page.
         Each example is ~22 genes and finishes in about a minute.</small></p>
@@ -172,7 +202,7 @@
       <div class="card p-4 mb-3">
         <h3 class="h6 text-uppercase text-secondary" style="letter-spacing:.05em">How it works</h3>
         <ul class="gx-steps mt-3">
-          <li><strong>Genes &rarr; proteins</strong><span>CDS from your GFF3 are translated (or genes are called if you omit it).</span></li>
+          <li><strong>Genes &rarr; proteins</strong><span>CDS from your GFF3 are translated. If no GFF3 is supplied, genes are called for prokaryotic genomes only.</span></li>
           <li><strong>Function prediction</strong><span>Each protein is annotated with DeepGO-PlusPlus-Light against the Gene Ontology.</span></li>
           <li><strong>Infer the organism</strong><span>The domain is read off the confident predictions via the GO taxon constraints (Asaad-style) &mdash; not assumed &mdash; and shown with its evidence.</span></li>
           <li><strong>Per-contig metrics</strong><span>Completeness, coherence, consistency, information content &mdash; one row per contig.</span></li>
@@ -183,19 +213,11 @@
 
       <div class="card p-4">
         <h3 class="h6 text-uppercase text-secondary" style="letter-spacing:.05em">The examples</h3>
-        <p class="text-secondary small mb-0 mt-2">Four demo genomes, one per domain of life, each assembled by
-          reverse-translating real proteins (so the predictions are genuine). The viral one is a <strong>complete
-          genome</strong> &mdash; the whole <em>phage T4</em> proteome (~290). The others are representative subsets
-          of much larger proteomes: <span class="gx-mono">Bacteria</span> (~450 <em>E. coli</em> proteins),
-          <span class="gx-mono">Eukaryota</span> (~150 baker's yeast) and <span class="gx-mono">Archaea</span>
-          (~150 <em>M. jannaschii</em>). The eukaryotic one <em>infers</em> the organism from the predicted
-          functions &mdash; yeast all the way down to <span class="gx-mono">Fungi</span>, not just the domain. The
-          others run the full pipeline (per-contig metrics, enforcement, timing) but skip the taxon call: at genome
-          scale the predictor leans toward eukaryote-associated GO terms, so for a bacterium, archaeon or virus the
-          mispredicted eukaryote-only calls outnumber the true taxon-specific signal and the call is suppressed
-          rather than assert a wrong organism. Predictions are reported down to a 0.5
-          confidence floor (the GO-DAG tail below that is pruned). No upload needed; each runs in a couple of
-          minutes.</p>
+        <p class="text-secondary small mb-0 mt-2">Four demo assemblies are bundled with matching GFF3 annotations.
+          Loading an example sets the upload fields and organism domain but does not submit the job. Gene calling is
+          deliberately limited to prokaryotes; for eukaryotes and viruses, use a GFF3 annotation or upload proteins
+          directly. Distinguishing prokaryotic from eukaryotic sequence reliably from a raw FASTA alone is not a
+          cheap browser-side check, so this form uses the organism selection and validates unsafe combinations.</p>
       </div>
     </div>
   </div>
@@ -213,6 +235,53 @@
     // Open the enforcement section if any of its boxes are already checked (e.g. re-render after a validation error).
     var det = document.getElementById('gx-enforce');
     if (det && det.querySelector('input[type=checkbox]:checked')) det.open = true;
+  })();
+
+  (function () {
+    var exampleUrl = "{% url 'genome-example' %}";
+    var genomeInput = document.getElementById('id_genome_file');
+    var gffInput = document.getElementById('id_gff3_file');
+    var proteinsInput = document.getElementById('id_proteins_file');
+    var domainSelect = document.getElementById('id_domain');
+
+    function setInputFile(input, file) {
+      var transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+    }
+
+    function fetchFile(organism, kind) {
+      var url = exampleUrl + '?organism=' + encodeURIComponent(organism) + '&file=' + kind;
+      return fetch(url)
+        .then(function (response) {
+          if (!response.ok) throw new Error('Could not load ' + url);
+          return response.blob().then(function (blob) {
+            var filename = organism + '_genome.' + kind;
+            return new File([blob], filename, {type: kind === 'gff3' ? 'text/gff3' : 'text/plain'});
+          });
+        });
+    }
+
+    $('.gx-load-example').click(function (e) {
+      e.preventDefault();
+      var button = e.currentTarget;
+      var organism = button.dataset.organism;
+      var domain = button.dataset.domain || 'auto';
+      button.disabled = true;
+      button.dataset.originalText = button.dataset.originalText || button.innerHTML;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading';
+      Promise.all([fetchFile(organism, 'fna'), fetchFile(organism, 'gff3')])
+        .then(function (files) {
+          setInputFile(genomeInput, files[0]);
+          setInputFile(gffInput, files[1]);
+          if (proteinsInput) proteinsInput.value = '';
+          if (domainSelect) $(domainSelect).val(domain);
+        })
+        .finally(function () {
+          button.disabled = false;
+          button.innerHTML = button.dataset.originalText;
+        });
+    });
   })();
 </script>
 {% endblock %}

@@ -21,7 +21,11 @@ services:
     image: redis:7-alpine
 
   web:
-    build: .
+    build:
+      context: .
+      args:
+        TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cpu}
+        TORCH_SPEC: ${TORCH_SPEC:-torch==2.2.2}
     command: ["web"]
     environment:
       DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
@@ -46,7 +50,11 @@ services:
       - "${WEB_PORT:-8000}:8000"
 
   worker:
-    build: .
+    build:
+      context: .
+      args:
+        TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cu128}
+        TORCH_SPEC: ${TORCH_SPEC:-torch}
     command: ["worker"]
     environment:
       DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
@@ -58,6 +66,13 @@ services:
       RELEASE_DATA_ROOT: /opt-data/extracted/
       DEEPGO_RELEASE: ${DEEPGO_RELEASE:-1.0.18}
       DGPP_THREADS: ${DGPP_THREADS:-8}
+      DGPP_DEVICE: ${DGPP_DEVICE:-cuda}
+      DGPP_WARMUP: ${DGPP_WARMUP:-1}
+      DGPP_VARIANT: ${DGPP_VARIANT:-mcm}
+      CELERY_POOL: solo
+      CELERY_CONCURRENCY: "1"
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       DOWNLOAD_ASSETS: ${DOWNLOAD_ASSETS:-1}
       # Genome tab: where the worker reaches the gspa genome-scale service.
       GSPA_SERVICE_URL: ${GSPA_SERVICE_URL:-http://gspa:8000}
@@ -77,6 +92,7 @@ services:
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_started}
+    runtime: nvidia
 
   # DeepGO-GSPA genome-scale annotation engine (JVM gspa-cli behind FastAPI).
   # Built from the sibling gspa repo; shares the DG++Light `assets` volume that

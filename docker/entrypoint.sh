@@ -37,7 +37,9 @@ case "${1:-web}" in
     ;;
   worker)
     wait_for_db
-    exec celery -A deepgoweb worker -l info --concurrency "${CELERY_CONCURRENCY:-2}"
+    exec celery -A deepgoweb worker -l info \
+        --pool "${CELERY_POOL:-prefork}" \
+        --concurrency "${CELERY_CONCURRENCY:-2}"
     ;;
   *)
     exec "$@"

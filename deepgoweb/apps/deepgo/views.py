@@ -5,7 +5,7 @@ from django.views.generic import (
 from django.views import View
 from deepgo.forms import GenomeForm, PredictionForm
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 import os
 
 from deepgo.models import GenomeJob, PredictionGroup, Release
@@ -17,6 +17,44 @@ import csv
 import requests
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from urllib.parse import quote
+
+
+def _ttl_literal(value):
+    text = '' if value is None else str(value)
+    return '"' + text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') + '"'
+
+
+def _ttl_uri_part(value):
+    return quote(str(value or 'unknown'), safe='')
+
+
+def _go_iri(go_id):
+    return 'http://purl.obolibrary.org/obo/' + str(go_id).replace(':', '_')
+
+
+def _score_statement(subject, protein_iri, go_id, score, source='DeepGOWeb'):
+    ann = subject + '/annotation/' + _ttl_uri_part(protein_iri.rsplit('/', 1)[-1]) + '/' + str(go_id).replace(':', '_')
+    return [
+        '<%s> a dg:ProteinFunctionAnnotation ;' % ann,
+        '  dg:protein <%s> ;' % protein_iri,
+        '  dg:goTerm <%s> ;' % _go_iri(go_id),
+        '  dg:score %.6g ;' % float(score),
+        '  dg:assignedBy %s .' % _ttl_literal(source),
+    ]
+
+
+def _rdf_response(lines, filename):
+    prefixes = [
+        '@prefix dg: <https://deepgo.cbrc.kaust.edu.sa/rdf#> .',
+        '@prefix go: <http://purl.obolibrary.org/obo/GO_> .',
+        '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
+        '',
+    ]
+    response = HttpResponse('\n'.join(prefixes + lines) + '\n',
+                            content_type='text/turtle; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @csrf_exempt
@@ -93,6 +131,32 @@ class PredictionDetailView(ActionMixin, DetailView):
                     writer.writerow([go_id, func, str(score)])
         return response
 
+    def on_download_rdf(self, request, action, *args, **kwargs):
+        pg = self.get_object()
+        base = 'https://deepgo.cbrc.kaust.edu.sa/deepgo/prediction/%s' % pg.uuid
+        lines = [
+            '<%s> a dg:PredictionRun ;' % base,
+            '  dg:predictor %s ;' % _ttl_literal(pg.predictor),
+            '  dg:version %s ;' % _ttl_literal(pg.version),
+            '  dg:threshold %.6g .' % float(pg.threshold),
+            '',
+        ]
+        for i, pred in enumerate(pg.predictions.all(), start=1):
+            pid = pred.protein_info or ('protein_%d' % i)
+            protein = base + '/protein/' + _ttl_uri_part(pid)
+            lines.extend([
+                '<%s> a dg:Protein ;' % protein,
+                '  dg:sequence %s .' % _ttl_literal(pred.sequence),
+                '',
+            ])
+            for ont in pred.get_functions(contract=False):
+                for go_id, _name, score in ont['functions']:
+                    if not go_id:
+                        continue
+                    lines.extend(_score_statement(base, protein, go_id, score))
+                    lines.append('')
+        return _rdf_response(lines, 'predictions.ttl')
+
 
 class GenomeCreateView(CreateView):
     """DeepGO-GSPA: upload a genome (+GFF3) for genome-scale annotation. Queues
@@ -117,47 +181,39 @@ class GenomeCreateView(CreateView):
 
 
 class GenomeExampleView(View):
-    """One-click examples for the Genome tab. Loads a small bundled example
-    genome (reverse-translated real genes + its GFF3) for the requested domain,
-    creates a GenomeJob with sensible defaults (DG++Light, per-contig metrics,
-    inferred organism taxon, consistency enforcement, provenance) and runs it —
-    the file-upload analogue of the Prediction tab's "Try an example". The
-    organism is left to be inferred (no kingdom/taxon asserted), so each example
-    also demonstrates the taxon inference recovering the right lineage."""
+    """Download bundled Genome-tab example inputs.
+
+    The form loads these files client-side so examples fill the fields but do
+    not submit a job. Keeping this endpoint means each example input is also a
+    stable, inspectable file users can download and modify."""
 
     EXAMPLE_DIR = os.path.join(os.path.dirname(__file__), 'examples')
 
-    # slug -> (file prefix, infer_taxon). Function-based taxon inference is only
-    # reliable for bacteria/eukaryotes; for archaea (informational machinery
-    # homologous to eukaryotes) and viruses (host-homologous or DB-absent
-    # proteins) it is left OFF so the demo never asserts a wrong organism.
+    # slug -> file prefix
     EXAMPLES = {
-        'eukaryote': ('eukaryote', True),   # infers Fungi (bias aligns with truth)
-        'bacteria':  ('bacteria',  False),  # mis-infers at scale (see note)
-        'archaea':   ('archaea',   False),
-        'phage':     ('phage',     False),
+        'eukaryote': 'eukaryote',
+        'bacteria': 'bacteria',
+        'archaea': 'archaea',
+        'phage': 'phage',
     }
 
     def get(self, request, *args, **kwargs):
-        from deepgo.tasks import annotate_genome
         slug = request.GET.get('organism', 'bacteria')
-        prefix, infer = self.EXAMPLES.get(slug, self.EXAMPLES['bacteria'])
-        fna = f'{prefix}_genome.fna'
-        gff = f'{prefix}_genome.gff3'
-        with open(os.path.join(self.EXAMPLE_DIR, fna)) as fh:
-            genome_data = fh.read()
-        with open(os.path.join(self.EXAMPLE_DIR, gff)) as fh:
-            gff3_data = fh.read()
-        job = GenomeJob.objects.create(
-            genome_filename=fna, genome_data=genome_data,
-            gff3_filename=gff, gff3_data=gff3_data,
-            predictor='light', metrics_scope='contig',
-            enforce_consistency=True, consistency_mode='remove',
-            provenance=True, infer_taxon=infer, status='pending',
-            user=request.user if request.user.is_authenticated else None)
-        annotate_genome.delay(job.pk)
-        return HttpResponseRedirect(
-            reverse('genome-detail', kwargs={'uuid': job.uuid}))
+        kind = request.GET.get('file', 'fna')
+        if slug not in self.EXAMPLES or kind not in ('fna', 'gff3'):
+            raise Http404('Unknown example file')
+        filename = f'{self.EXAMPLES[slug]}_genome.{kind}'
+        path = os.path.join(self.EXAMPLE_DIR, filename)
+        if not os.path.exists(path):
+            raise Http404('Unknown example file')
+        with open(path, 'rb') as fh:
+            content = fh.read()
+        content_type = 'text/plain'
+        if kind == 'gff3':
+            content_type = 'text/gff3'
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class GenomeDetailView(ActionMixin, DetailView):
@@ -281,6 +337,41 @@ class GenomeDetailView(ActionMixin, DetailView):
                                 content_type='text/plain; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="gspa_annotations.gaf"'
         return response
+
+    def on_download_rdf(self, request, action, *args, **kwargs):
+        job = self.get_object()
+        base = 'https://deepgo.cbrc.kaust.edu.sa/deepgo/genome/%s' % job.uuid
+        lines = [
+            '<%s> a dg:GenomeAnnotationRun ;' % base,
+            '  dg:predictor %s ;' % _ttl_literal(job.predictor),
+            '  dg:status %s .' % _ttl_literal(job.status),
+            '',
+        ]
+        if job.kingdom:
+            lines.extend([
+                '<%s> dg:organismDomain %s .' % (base, _ttl_literal(job.kingdom)),
+                '',
+            ])
+        for r in job.annotations or []:
+            if (r.get('type') or 'GO') != 'GO':
+                continue
+            pid = r.get('protein_id') or 'protein'
+            protein = base + '/protein/' + _ttl_uri_part(pid)
+            lines.extend([
+                '<%s> a dg:Protein ;' % protein,
+                '  dg:proteinId %s .' % _ttl_literal(pid),
+                '',
+            ])
+            try:
+                score = float(r.get('score') or 0.0)
+            except (TypeError, ValueError):
+                score = 0.0
+            source = r.get('source') or r.get('evidence') or 'DeepGO-GSPA'
+            if not r.get('value'):
+                continue
+            lines.extend(_score_statement(base, protein, r.get('value') or '', score, source=source))
+            lines.append('')
+        return _rdf_response(lines, 'gspa_annotations.ttl')
 
 
 class ReleaseListView(ListView):
