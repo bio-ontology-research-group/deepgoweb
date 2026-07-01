@@ -23,3 +23,8 @@ QUALIFIERS = {
     NAMESPACES['cc']: 'part of',
     
 }
+
+# The seeded example PredictionGroup (manage.py seed_example). The prediction form
+# and docs link to its stored result; both guard on its existence so a fresh DB
+# never renders a 404 link.
+EXAMPLE_UUID = '9f0906ae-ed30-4003-8483-844dce56040d'

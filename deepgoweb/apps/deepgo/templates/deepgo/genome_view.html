@@ -1,0 +1,356 @@
+{% extends "deepgo/base.html" %}
+
+{% block head %}
+<style>
+  .gx-meta { color: var(--dg-muted); font-size: .88rem; }
+  .gx-meta code { background: #eef0fe; color: var(--dg-primary); padding: .05rem .4rem; border-radius: .35rem; }
+  .gx-stats { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0 1.5rem; }
+  .gx-stat { border: 1px solid var(--dg-border); border-radius: .8rem; padding: .8rem 1.1rem; min-width: 8rem; background: #fff; }
+  .gx-stat .v { font-size: 1.5rem; font-weight: 800; color: var(--dg-ink); line-height: 1; }
+  .gx-stat .l { font-size: .78rem; color: var(--dg-muted); margin-top: .3rem; }
+  .gx-h { display: flex; align-items: baseline; gap: .6rem; margin: 1.75rem 0 .25rem; }
+  .gx-h h2 { font-size: 1.15rem; margin: 0; }
+  .gx-h .hint { font-size: .82rem; color: var(--dg-muted); }
+  .gx-bar { height: 6px; border-radius: 3px; background: #eef0fe; overflow: hidden; margin-top: .25rem; }
+  .gx-bar > span { display: block; height: 100%; background: var(--dg-primary); }
+  .gx-go { font-family: ui-monospace, 'Menlo', monospace; font-size: .85rem; }
+  .gx-lbl { display: block; font-size: .78rem; color: var(--dg-ink); }
+  .gx-badge { display: inline-block; padding: .1rem .45rem; border-radius: .4rem; font-size: .75rem; font-weight: 600; }
+  .gx-pass { background: #dcfce7; color: #15803d; }
+  .gx-fail { background: #fee2e2; color: #b91c1c; }
+  .gx-na   { background: #f1f5f9; color: #64748b; }
+  .gx-score { font-variant-numeric: tabular-nums; }
+  .gx-gloss { font-size: .85rem; }
+  .gx-gloss dt { font-weight: 700; color: var(--dg-ink); font-family: ui-monospace, monospace; font-size: .8rem; }
+  .gx-gloss dd { color: var(--dg-muted); margin: 0 0 .55rem; }
+  .gx-act-remove { color: #b91c1c; } .gx-act-promote { color: #15803d; } .gx-act-downrank,.gx-act-flag { color: #b45309; }
+  table.gx-table td, table.gx-table th { vertical-align: middle; }
+  .gx-org { border-right: 1px solid var(--dg-border); padding-right: 1.25rem; }
+  .gx-org-label { font-size: 1.6rem; font-weight: 800; color: var(--dg-primary); line-height: 1.05; }
+  .gx-org-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--dg-muted); }
+  .gx-lineage { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .35rem; }
+  .gx-lin-node { font-size: .82rem; padding: .12rem .5rem; border-radius: .5rem; background: #eef0fe; color: var(--dg-ink); }
+  .gx-lin-leaf { background: var(--dg-primary); color: #fff; font-weight: 600; }
+  .gx-lin-sep { color: var(--dg-muted); }
+  .gx-time-bar { height: 8px; border-radius: 4px; background: var(--dg-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+  <h1 class="h2 mb-0">Genome annotation result</h1>
+  <span class="pill">DeepGO-GSPA</span>
+</div>
+<p class="gx-meta mb-3">
+  {% if object.genome_filename %}<code>{{ object.genome_filename }}</code>{% endif %}
+  {% if object.proteins_filename %}<code>{{ object.proteins_filename }}</code>{% endif %}
+  {% if object.gff3_filename %}+ <code>{{ object.gff3_filename }}</code>{% endif %}
+  &middot; predictor <code>DeepGO-PlusPlus-Light</code>
+  &middot; metrics <code>{{ object.get_metrics_scope_display }}</code>
+  {% if object.kingdom %}&middot; domain <code>{{ object.kingdom }}</code>{% endif %}
+  {% if object.inferred_taxon %}&middot; organism <code>{{ object.inferred_taxon.label }}</code> ({% if object.taxon %}override{% else %}inferred{% endif %}){% elif object.kingdom %}&middot; domain <code>{{ object.kingdom }}</code>{% endif %}
+  {% if object.enforce_consistency %}&middot; consistency <code>{{ object.get_consistency_mode_display }}</code>{% endif %}
+  {% if object.enforce_completeness %}&middot; <code>completeness</code>{% endif %}
+  {% if object.enforce_coherence %}&middot; <code>coherence</code>{% endif %}
+</p>
+
+{% if object.status == 'pending' or object.status == 'running' %}
+  <div class="surface">
+    <div class="d-flex align-items-center gap-3">
+      <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+      <div>
+        <div class="fw-semibold">Annotation {{ object.get_status_display|lower }}…</div>
+        <div class="gx-meta">This page refreshes automatically. A bacterial genome usually finishes in a few minutes.</div>
+      </div>
+    </div>
+    <hr>
+    <div class="gx-meta">Pipeline: translate CDS / call genes &rarr; DeepGO-PlusPlus-Light prediction
+      &rarr; per-contig genome-scale metrics{% if object.enforce_consistency or object.enforce_completeness or object.enforce_coherence %} &rarr; quality enforcement{% endif %} &rarr; provenance.</div>
+  </div>
+
+{% elif object.status == 'error' %}
+  <div class="alert alert-danger">
+    <h5 class="alert-heading">Annotation failed</h5>
+    <p class="mb-2">The pipeline returned an error. The tail of the log is below; check that the FASTA
+      (and GFF3, if given) are well-formed.</p>
+    <pre class="mb-0" style="white-space:pre-wrap;font-size:.82rem">{{ object.error }}</pre>
+  </div>
+  <a href="{% url 'genome' %}" class="btn btn-outline-primary">Start over</a>
+
+{% else %}
+  {# ---------------- DONE ---------------- #}
+  <div class="gx-stats">
+    <div class="gx-stat"><div class="v">{{ protein_summary|length }}</div><div class="l">protein{{ protein_summary|length|pluralize }}</div></div>
+    <div class="gx-stat"><div class="v">{{ object.n_contigs }}</div><div class="l">contig{{ object.n_contigs|pluralize }} assessed</div></div>
+    <div class="gx-stat"><div class="v">{{ object.n_annotations }}</div><div class="l">GO annotations</div></div>
+    <div class="gx-stat"><div class="v">{{ distinct_terms }}</div><div class="l">distinct GO terms</div></div>
+    {% if has_aspect %}
+    <div class="gx-stat"><div class="v">{{ aspect_totals.MF }}&middot;{{ aspect_totals.BP }}&middot;{{ aspect_totals.CC }}</div><div class="l">confident MF&middot;BP&middot;CC</div></div>
+    {% endif %}
+    {% if object.enforcement_actions %}
+    <div class="gx-stat"><div class="v">{{ object.enforcement_actions|length }}</div><div class="l">enforcement actions</div></div>
+    {% endif %}
+  </div>
+
+  {# ---------------- INFERRED ORGANISM ---------------- #}
+  {% if object.inferred_taxon %}
+  <div class="gx-h"><h2>Inferred organism</h2>
+    <span class="hint">read off the predicted functions via the GO taxon constraints &mdash; not assumed</span></div>
+  <div class="surface">
+    <div class="d-flex align-items-center flex-wrap gap-3">
+      <div class="gx-org">
+        <div class="gx-org-tag">{% if object.taxon %}taxon (overridden){% else %}inferred taxon{% endif %}</div>
+        <div class="gx-org-label">{{ object.inferred_taxon.label }}</div>
+        <div class="gx-meta gx-go">{{ object.inferred_taxon.taxon }}</div>
+      </div>
+      <div class="gx-meta" style="max-width:36rem">
+        The high-confidence predictions (score &ge; 0.9) were tested against the NCBI taxon
+        constraints (<code>only_in_taxon</code> / <code>never_in_taxon</code>), and the proteome
+        was placed at the <em>most specific</em> candidate taxon whose constraints they violate
+        least &mdash; the Asaad genome-scale-pfp-adjust idea, run in reverse. Candidates are not
+        limited to the four domains: any taxon named by the constraints (phylum, class, genus,
+        species&hellip;) can be inferred. {% if object.taxon %}You <strong>overrode</strong>
+        this with <code>{{ object.taxon }}</code>, which was used for enforcement.{% else %}This taxon
+        was then used for taxon-consistency enforcement.{% endif %}
+      </div>
+    </div>
+    {% if object.inferred_taxon.lineage %}
+    <div class="gx-lineage mt-3">
+      <span class="gx-meta me-2">Lineage:</span>
+      {% for t in object.inferred_taxon.lineage %}<span class="gx-lin-node{% if forloop.first %} gx-lin-leaf{% endif %}">{{ t }}</span>{% if not forloop.last %}<span class="gx-lin-sep">&lsaquo;</span>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    {% if object.taxon_inference %}
+    <table class="table table-sm gx-table mt-3 mb-0" style="max-width:42rem">
+      <thead><tr><th>Candidate taxon</th><th>Specificity</th><th>Forbidden terms</th><th>Supporting terms</th><th></th></tr></thead>
+      <tbody>
+        {% for r in object.taxon_inference|slice:":12" %}
+        <tr{% if r.inferred == 'true' %} class="table-success"{% endif %}>
+          <td>{{ r.label }} <span class="gx-meta gx-go">{{ r.taxon }}</span></td>
+          <td class="gx-score">{{ r.depth }}</td>
+          <td class="gx-score">{{ r.forbidden_terms }}</td>
+          <td class="gx-score">{{ r.support_terms }}</td>
+          <td>{% if r.inferred == 'true' %}<span class="gx-badge gx-pass">inferred</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="gx-meta mt-2 mb-0"><strong>forbidden terms</strong> = high-confidence predicted GO terms that
+      <em>cannot</em> occur in that taxon (taxon-constraint violations) &mdash; fewest wins, then the
+      <strong>most specific</strong> (deepest) taxon; <strong>supporting terms</strong> = constrained terms
+      whose <code>only_in_taxon</code> target lies on that taxon's lineage. Inference uses only confident
+      predictions because a predictor's low-score tail is cross-taxon noise.</p>
+    {% endif %}
+  </div>
+  {% elif not object.taxon and not object.infer_taxon %}
+  <div class="gx-h"><h2>Inferred organism</h2>
+    <span class="hint">not asserted for this proteome</span></div>
+  <div class="surface">
+    <p class="gx-meta mb-0">Organism inference was <strong>not run</strong> for this example. Function-based
+      taxon inference is reliable for eukaryotes (the eukaryote example resolves to <span class="gx-go">Fungi</span>),
+      but not, at realistic genome scale, for bacteria, archaea or viruses: the predictor leans toward
+      eukaryote-associated GO terms, and across a whole proteome those mispredicted <code>only_in</code>-eukaryote
+      calls outnumber the organism's genuine taxon-specific signal (for this proteome, Bacteria is only a narrow
+      runner-up to Eukaryota). Rather than assert a wrong organism, the example skips the call &mdash; the
+      per-contig metrics, annotations and timing below are unaffected.</p>
+  </div>
+  {% endif %}
+
+  {# ---------------- PER-CONTIG METRICS ---------------- #}
+  {% if object.per_contig_metrics %}
+  <div class="gx-h"><h2>Per-contig quality metrics</h2>
+    <span class="hint">one row per contig &mdash; the unit at which GSPA assesses an assembly</span></div>
+  <div class="surface p-0" style="overflow:auto">
+    <table class="table table-striped gx-table mb-0">
+      <thead><tr>
+        <th>Contig</th><th>Proteins</th><th>Annotated</th><th>Coverage</th>
+        <th>Completeness</th><th>Consistent</th><th>Violations</th>
+        <th>Mean IC</th><th>Composite</th><th>Essential</th>
+      </tr></thead>
+      <tbody>
+        {% for r in object.per_contig_metrics %}
+        <tr>
+          <td class="gx-go">{{ r.genome_id }}</td>
+          <td>{{ r.total_proteins }}</td>
+          <td>{{ r.annotated_proteins }}</td>
+          <td style="min-width:5rem">{% widthratio r.annotation_coverage 1 100 %}%
+            <div class="gx-bar"><span style="width:{% widthratio r.annotation_coverage 1 100 %}%"></span></div></td>
+          <td style="min-width:5rem">{% widthratio r.completeness 1 100 %}%
+            <div class="gx-bar"><span style="width:{% widthratio r.completeness 1 100 %}%"></span></div></td>
+          <td>{% if r.consistent == 'true' %}<span class="gx-badge gx-pass">PASS</span>{% else %}<span class="gx-badge gx-fail">FAIL</span>{% endif %}</td>
+          <td>{{ r.violation_count }}</td>
+          <td class="gx-score">{{ r.mean_ic|floatformat:3 }}</td>
+          <td class="gx-score">{{ r.composite_score|floatformat:3 }}</td>
+          <td>{{ r.present_essential }}<span class="text-secondary">/{{ r.present_essential|add:r.missing_essential }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details class="mt-2"><summary class="text-secondary small" style="cursor:pointer">What do these mean?</summary>
+    <dl class="gx-gloss row mt-2">
+      <div class="col-md-6">
+        <dt>coverage</dt><dd>Fraction of proteins that received at least one GO annotation.</dd>
+        <dt>completeness</dt><dd>Fraction of the domain's <em>essential</em> functions found on this contig (the right-hand column shows present / total essentials).</dd>
+        <dt>consistent</dt><dd>Whether the contig's annotations jointly satisfy the GO taxon constraints (SAT4J). FAIL means at least one violation.</dd>
+      </div>
+      <div class="col-md-6">
+        <dt>violations</dt><dd>Number of taxon-constraint violations in the UNSAT core.</dd>
+        <dt>mean IC</dt><dd>Mean information content of the predicted terms &mdash; higher means more specific (rarer) functions.</dd>
+        <dt>composite</dt><dd>A single 0&ndash;1 roll-up of coverage, completeness, consistency and coherence.</dd>
+      </div>
+    </dl>
+    <p class="gx-meta mb-0">Coherence columns (process / pathway / complex) are reported in the downloadable JSON; they show <span class="gx-badge gx-na">N/A</span> unless the relevant evidence is present.</p>
+  </details>
+  {% endif %}
+
+  {# ---------------- TIMING ---------------- #}
+  {% if object.timing %}
+  <div class="gx-h"><h2>Run time</h2>
+    <span class="hint">wall-clock per phase &mdash; where the genome-scale annotation spent its time</span></div>
+  <div class="surface p-0" style="overflow:auto">
+    <table class="table table-sm gx-table mb-0" style="max-width:40rem">
+      <thead><tr><th>Phase</th><th>Seconds</th><th>Share</th></tr></thead>
+      <tbody>
+        {% for r in object.timing %}
+        <tr{% if r.phase == 'total' %} class="fw-bold"{% endif %}>
+          <td>{{ r.phase }}</td>
+          {% if r.phase == 'proteins' %}
+          <td class="gx-score" colspan="2">{{ r.seconds }} proteins</td>
+          {% else %}
+          <td class="gx-score">{{ r.seconds }}</td>
+          <td style="min-width:10rem">{{ r.percent }}%
+            <div class="gx-bar"><span style="width:{{ r.percent }}%"></span></div></td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# ---------------- PER-PROTEIN SUMMARY ---------------- #}
+  {% if protein_summary %}
+  <div class="gx-h"><h2>Per-protein functions</h2>
+    <span class="hint">confident calls (score &ge; 0.5) for every protein &mdash; not just the first</span></div>
+  <div class="surface p-0" style="overflow:auto;max-height:30rem">
+    <table class="table table-striped gx-table mb-0">
+      <thead><tr><th>Protein</th><th>Confident GO terms</th><th>MF</th><th>BP</th><th>CC</th></tr></thead>
+      <tbody>
+        {% for p in protein_summary %}
+        <tr>
+          <td class="gx-go">{{ p.protein }}</td>
+          <td>{{ p.nc }}<span class="text-secondary">&thinsp;/&thinsp;{{ p.n }}</span></td>
+          <td>{{ p.MF }}</td><td>{{ p.BP }}</td><td>{{ p.CC }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="gx-meta mt-1"><strong>Confident GO terms</strong> = predictions scoring &ge; 0.5
+    (the figure after the slash counts all terms incl. propagated ancestors);
+    <strong>MF / BP / CC</strong> = the molecular-function / biological-process /
+    cellular-component split of those confident calls. Distinct profiles here are why
+    GSPA scores each protein &mdash; and each contig &mdash; separately.</p>
+  {% endif %}
+
+  {# ---------------- ENFORCEMENT ACTIONS ---------------- #}
+  {% if object.enforcement_actions %}
+  <div class="gx-h"><h2>Enforcement actions</h2>
+    <span class="hint">how GSPA repaired the prediction set &mdash; full provenance</span></div>
+  <div class="surface p-0" style="overflow:auto;max-height:26rem">
+    <table class="table table-striped gx-table mb-0">
+      <thead><tr><th>Dimension</th><th>Action</th><th>Protein</th><th>GO term</th><th>Reason</th><th>Basis</th><th>Score</th></tr></thead>
+      <tbody>
+        {% for a in object.enforcement_actions|slice:":500" %}
+        <tr>
+          <td>{{ a.dimension }}</td>
+          <td class="gx-act-{{ a.action }}">{{ a.action }}</td>
+          <td class="gx-go">{{ a.protein_id }}</td>
+          <td><a class="gx-go" href="https://amigo.geneontology.org/amigo/term/{{ a.term }}" target="_blank" rel="noopener">{{ a.term }}</a>
+            {% if a.term_label %}<span class="gx-lbl">{{ a.term_label }}</span>{% endif %}</td>
+          <td class="gx-meta">{{ a.reason }}</td>
+          <td class="gx-go" style="font-size:.78rem">{{ a.basis }}</td>
+          <td class="gx-score">{{ a.score_before|floatformat:2 }} &rarr; {{ a.score_after|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="gx-meta mt-1">{% if object.enforcement_actions|length > 500 %}Showing the first 500 of {{ object.enforcement_actions|length }}. {% endif %}
+    <strong>dimension</strong> = which quality axis (consistency / completeness / coherence); <strong>action</strong> = remove / downrank / flag / promote;
+    <strong>basis</strong> = the predictor and score (or partner / constraint) the decision was based on.</p>
+  {% endif %}
+
+  {# ---------------- ANNOTATIONS (raw, collapsed) ---------------- #}
+  {% if object.annotations %}
+  <div class="gx-h"><h2>Raw annotation rows</h2>
+    <span class="hint">every (protein, GO term) call with provenance &mdash; use the GAF/CSV download for the full set</span></div>
+  <details>
+    <summary class="text-secondary small mb-2" style="cursor:pointer">Show first 500 of {{ object.n_annotations }} rows</summary>
+  <div class="surface p-0" style="overflow:auto;max-height:32rem">
+    <table class="table table-striped gx-table mb-0">
+      <thead><tr><th>Protein</th><th>GO term</th><th>Score</th><th>Source</th><th>Evidence</th><th>Provenance</th></tr></thead>
+      <tbody>
+        {% for a in object.annotations|slice:":500" %}
+        <tr>
+          <td class="gx-go">{{ a.protein_id }}</td>
+          <td><a class="gx-go" href="https://amigo.geneontology.org/amigo/term/{{ a.value }}" target="_blank" rel="noopener">{{ a.value }}</a>
+            {% if a.label %}<span class="gx-lbl">{{ a.label }}</span>{% endif %}</td>
+          <td class="gx-score">{{ a.score|floatformat:3 }}</td>
+          <td>{{ a.source }}</td>
+          <td>{{ a.evidence }}</td>
+          <td class="gx-meta" style="font-size:.78rem">{{ a.provenance }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="gx-meta mt-1"><strong>score</strong> = calibrated confidence (0&ndash;1); <strong>source</strong> = the predictor;
+    <strong>evidence</strong> = GO evidence code (IEA = electronic, ISC = imputed by enforcement);
+    <strong>provenance</strong> = the full trail of how the term was assigned. Use the GAF/CSV download for the complete set incl. propagated ancestors.</p>
+  </details>
+  {% endif %}
+
+  {# ---------------- ACTIONS ---------------- #}
+  <div class="gx-h"><h2>Download</h2><span class="hint">the annotations in a standard, interoperable format</span></div>
+  <div class="d-flex flex-wrap gap-2 mt-1 align-items-center">
+    <form action="{% url 'genome-detail' object.uuid %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="download_gaf"/>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-download me-2"></i>Download GAF 2.2</button>
+    </form>
+    <form action="{% url 'genome-detail' object.uuid %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="download_csv"/>
+      <button type="submit" class="btn btn-outline-secondary">Download table (CSV)</button>
+    </form>
+    <form action="{% url 'genome-detail' object.uuid %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="download_rdf"/>
+      <button type="submit" class="btn btn-outline-secondary">Download RDF/Turtle</button>
+    </form>
+    <a href="{% url 'genome' %}" class="btn btn-outline-primary">New genome</a>
+  </div>
+  <p class="gx-meta mt-2 mb-0"><strong>GAF 2.2</strong> is the Gene Ontology Consortium's standard
+    <a href="http://geneontology.org/docs/go-annotation-file-gaf-format-2.2/" target="_blank" rel="noopener">annotation-file format</a>
+    &mdash; it loads directly into AmiGO, GOATOOLS, topGO and other GO tooling. The organism taxon
+    is the inferred one; aspect (F/P/C) and the relation qualifier come from the ontology. The CSV is
+    the raw scored table (with provenance) for spreadsheet use.</p>
+
+  {% if object.log %}
+  <details class="mt-4"><summary class="text-secondary small" style="cursor:pointer">Run log</summary>
+    <pre class="mt-2" style="white-space:pre-wrap;font-size:.8rem">{{ object.log }}</pre>
+  </details>
+  {% endif %}
+
+  <p class="gx-meta mt-4">Results are provided under the
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY</a> license.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if object.status == 'pending' or object.status == 'running' %}
+<script type="text/javascript">setTimeout(function () { window.location.reload(); }, 4000);</script>
+{% endif %}
+{% endblock %}

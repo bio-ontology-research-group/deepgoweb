@@ -1,13 +1,46 @@
 {% extends "deepgo/base.html" %}
 {% load widget_tweaks %}
 
+{% block head %}
+{% if not object.component_predictions.0.error %}
+  {% for pred in object.predictions.all %}
+    {% if not pred.scores %}
+      <meta http-equiv="refresh" content="5">
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% endblock %}
+
 {% block content %}
+{% if object.component_predictions.0.error %}
+  <div class="alert alert-danger" role="alert">
+    DeepGO-PlusPlus-Light failed: {{ object.component_predictions.0.error }}
+  </div>
+{% else %}
+  {% for pred in object.predictions.all %}
+    {% if not pred.scores %}
+      <div class="alert alert-info" role="status">
+        DeepGO-PlusPlus-Light is running. This page refreshes automatically; the first run after a restart can take longer while model weights load.
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
 {% if object.contract %}
 <p class="text-muted"><small>Showing only the most specific predicted GO terms
 (redundant ancestors above the threshold are hidden). The full propagated set is
 available via the JSON/CSV export below.</small></p>
 {% endif %}
 {% for pred in object.predictions.all %}
+  {% if not pred.scores %}
+  <div class="row">
+    <div class="col-md-12 sequence">
+      <p>
+      {% if pred.protein_info %}<strong>{{ pred.protein_info }}</strong> <br/> {% endif %} {{ pred.sequence }}
+      </p>
+    </div>
+  </div>
+  <hr>
+  {% else %}
   <div class="row">
     <div class="col-md-6 sequence">
       <p>
@@ -48,8 +81,9 @@ available via the JSON/CSV export below.</small></p>
     </div>
   </div>
   <hr>
+  {% endif %}
 {% endfor %}
-{% if object.component_predictions %}
+{% if object.component_predictions and not object.component_predictions.0.error %}
 <div class="row">
   <div class="col-md-12">
     <h2>Individual predictor outputs</h2>
@@ -87,6 +121,14 @@ available via the JSON/CSV export below.</small></p>
       {% csrf_token %}
       <input type="hidden" name="action" value="download_csv"/>
       <button type="submit" class="btn btn-primary">CSV Format</button>
+    </form>
+  </div>
+  <div class="col-md-2">
+    <form action="{% url "prediction-detail" object.uuid %}"
+	  method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="download_rdf"/>
+      <button type="submit" class="btn btn-primary">RDF/Turtle</button>
     </form>
   </div>
   <div class="col-md-2">

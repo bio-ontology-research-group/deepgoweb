@@ -10,11 +10,24 @@
         forgery attacks, keep track of sessions and are deleted when the session ends. 
       </p>
       <div class="ml-auto">
-        <a type="button" class="btn btn-warning"
-           href="javascript:Cookielaw.createCookielawCookie();">
+        <a type="button" class="btn btn-warning" href="#" id="CookielawAccept">
           Accept
         </a>
       </div>
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    var accept = document.getElementById('CookielawAccept');
+    if (!accept) return;
+    accept.addEventListener('click', function (event) {
+      event.preventDefault();
+      var expiry = new Date();
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      document.cookie = 'cookielaw_accepted=1; expires=' + expiry.toUTCString() + '; path=/; SameSite=Lax';
+      var banner = document.getElementById('CookielawBanner');
+      if (banner) banner.style.display = 'none';
+    });
+  }());
+</script>

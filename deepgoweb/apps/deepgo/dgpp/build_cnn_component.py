@@ -261,8 +261,9 @@ def main():
     predict(model, vocab, args.max_len, args.test_fasta, args.out, args.min_score, torch)
 
 
-def predict(model, vocab, max_len, test_fasta, out_path, min_score, torch):
+def predict(model, vocab, max_len, test_fasta, out_path, min_score, torch, device='cpu'):
     """Score a FASTA with a (trained or loaded) CNN -> protein<TAB>term<TAB>score."""
+    model.to(device)
     model.eval()
     test = list(read_fasta(test_fasta))
     nw = 0
@@ -270,7 +271,7 @@ def predict(model, vocab, max_len, test_fasta, out_path, min_score, torch):
     with opn_out as out, torch.no_grad():
         for i in range(0, len(test), 256):
             chunk = test[i:i + 256]
-            xb = torch.from_numpy(np.stack([encode(s, max_len) for _, s in chunk]))
+            xb = torch.from_numpy(np.stack([encode(s, max_len) for _, s in chunk])).to(device)
             probs = torch.sigmoid(model(xb)).cpu().numpy()
             for (pname, _), row in zip(chunk, probs):
                 for c in np.where(row >= min_score)[0]:

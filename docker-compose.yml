@@ -21,7 +21,11 @@ services:
     image: redis:7-alpine
 
   web:
-    build: .
+    build:
+      context: .
+      args:
+        TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cpu}
+        TORCH_SPEC: ${TORCH_SPEC:-torch==2.2.2}
     command: ["web"]
     environment:
       DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
@@ -46,7 +50,11 @@ services:
       - "${WEB_PORT:-8000}:8000"
 
   worker:
-    build: .
+    build:
+      context: .
+      args:
+        TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cu128}
+        TORCH_SPEC: ${TORCH_SPEC:-torch}
     command: ["worker"]
     environment:
       DJANGO_SETTINGS_MODULE: deepgoweb.settings.docker
@@ -58,13 +66,49 @@ services:
       RELEASE_DATA_ROOT: /opt-data/extracted/
       DEEPGO_RELEASE: ${DEEPGO_RELEASE:-1.0.18}
       DGPP_THREADS: ${DGPP_THREADS:-8}
+      DGPP_DEVICE: ${DGPP_DEVICE:-cuda}
+      DGPP_WARMUP: ${DGPP_WARMUP:-1}
+      DGPP_VARIANT: ${DGPP_VARIANT:-mcm}
+      CELERY_POOL: solo
+      CELERY_CONCURRENCY: "1"
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       DOWNLOAD_ASSETS: ${DOWNLOAD_ASSETS:-1}
+      # Genome tab: where the worker reaches the gspa genome-scale service.
+      GSPA_SERVICE_URL: ${GSPA_SERVICE_URL:-http://gspa:8000}
+      # ProteInfer (CPU): the worker shells `docker run` the isolated TF1.15 image
+      # (ProteInfer needs legacy tensorflow.contrib, can't share TF2.15, and can't
+      # use the Blackwell sm_120 GPU) against the host daemon via the mounted
+      # docker.sock. proteinfer_dir + TMPDIR are host-backed paths at MATCHING host
+      # paths so the nested bind-mounts resolve on the host daemon (docker-in-docker).
+      DGPP_PROTEINFER_DIR: ${DGPP_PROTEINFER_DIR:-/home/leechuck/dgpp_pf/proteinfer}
+      DGPP_PROTEINFER_DOCKER: ${DGPP_PROTEINFER_DOCKER:-dgpp-proteinfer:tf115}
+      TMPDIR: ${DGPP_PF_TMPDIR:-/home/leechuck/dgpp_pf/tmp}
     volumes:
       - assets:/opt/dgpp_assets
       - release_data:/opt-data/extracted
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/leechuck/dgpp_pf:/home/leechuck/dgpp_pf
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_started}
+    runtime: nvidia
+
+  # DeepGO-GSPA genome-scale annotation engine (JVM gspa-cli behind FastAPI).
+  # Built from the sibling gspa repo; shares the DG++Light `assets` volume that
+  # download_assets.sh populates (train_db.dmnd, go.obo, ...). CPU-only.
+  gspa:
+    build:
+      context: ../gspa
+      dockerfile: service/Dockerfile
+    environment:
+      DGPP_ASSETS: /opt/dgpp_assets
+      GSPA_GO_OWL: /opt/dgpp_assets/go.obo
+      GSPA_THREADS: ${GSPA_THREADS:-8}
+    volumes:
+      - assets:/opt/dgpp_assets:ro
+    ports:
+      - "${GSPA_PORT:-8001}:8000"
 
   fuseki:
     build:

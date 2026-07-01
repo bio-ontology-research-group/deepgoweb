@@ -148,7 +148,20 @@ DGPP_LIGHT = {
     'ESM2_HEAD_MODEL': os.environ.get('DGPP_ESM2_HEAD_MODEL', ''),  # ESM2-35M MCM head (.pt)
     'PROTEINFER_DIR': os.environ.get('DGPP_PROTEINFER_DIR', ''),    # ProteInfer repo dir
     'PROTEINFER_DOCKER': os.environ.get('DGPP_PROTEINFER_DOCKER', ''),  # pre-built TF1.15 image
+    'DEVICE': os.environ.get('DGPP_DEVICE', 'cpu'),
 }
+
+# DeepGO-GSPA genome-scale annotation tab. The genome work (CDS translation,
+# per-contig metrics, SAT taxon-consistency enforcement, provenance) runs in the
+# separate JVM `gspa` service (gspa repo, service/app.py); the Genome tab POSTs
+# the uploaded genome+GFF3 to it from the Celery worker. See deepgo.tasks.annotate_genome.
+GSPA_SERVICE_URL = os.environ.get('GSPA_SERVICE_URL', 'http://gspa:8000')
+GSPA_SERVICE_TIMEOUT = int(os.environ.get('GSPA_SERVICE_TIMEOUT', '3600'))
+# Allow large genome uploads through Django's form/file machinery.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get('DATA_UPLOAD_MAX_MEMORY_SIZE', str(60 * 1024 * 1024)))
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get('FILE_UPLOAD_MAX_MEMORY_SIZE', str(60 * 1024 * 1024)))
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators

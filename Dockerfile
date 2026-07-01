@@ -30,9 +30,27 @@ WORKDIR /app
 # --- python deps in three layers for cache friendliness ---
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
-# DG++Light extras: CPU torch + fair-esm (imported lazily by dgpp/predict.py)
-RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.2.2" \
+# DG++Light extras: torch + fair-esm (imported lazily by dgpp/predict.py).
+# Build with --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu128
+# for GPU inference in the Celery worker.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+ARG TORCH_SPEC=torch==2.2.2
+RUN pip install --index-url "${TORCH_INDEX}" "${TORCH_SPEC}" \
     && pip install "fair-esm==2.0.0"
+# WSGI server for the `web` role (entrypoint runs `gunicorn`) + WhiteNoise so that
+# gunicorn serves the collected static files directly (no nginx in this deploy).
+# Separate layer so it doesn't bust the heavy requirements/torch layers above.
+RUN pip install "gunicorn==23.0.0" "whitenoise==6.8.2"
+
+# Docker CLI (client only) so the Celery worker can launch the isolated TF1.15
+# ProteInfer container (DGPP_PROTEINFER_DOCKER) against the host daemon via the
+# mounted /var/run/docker.sock. ProteInfer needs legacy TF1.15 (tensorflow.contrib)
+# so it cannot share this image's TF2.15, and it is CPU-only. Placed after the
+# heavy pip layers so it doesn't bust their cache.
+ARG DOCKER_CLI_VERSION=27.3.1
+RUN curl -fL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz" \
+      | tar -xz -C /usr/local/bin --strip-components=1 docker/docker \
+    && docker --version
 
 # --- app code ---
 COPY . /app
