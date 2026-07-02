@@ -66,7 +66,7 @@ if [ -n "$DEEPGO_RELEASE" ]; then
   REL_DIR="$RELEASE_DATA_ROOT/$DEEPGO_RELEASE"
   mkdir -p "$REL_DIR"
   log "DeepGOPlus release $DEEPGO_RELEASE -> $REL_DIR"
-  for f in go.obo terms.pkl train_data.pkl model.h5; do
+  for f in go.obo terms.pkl train_data.pkl train_data.dmnd model.h5; do
     fetch "$DATA_BASE/deepgo/extracted/$DEEPGO_RELEASE/$f" "$REL_DIR/$f"
   done
 fi

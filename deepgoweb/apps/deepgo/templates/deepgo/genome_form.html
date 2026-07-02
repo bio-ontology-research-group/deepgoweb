@@ -37,7 +37,7 @@
 </div>
 <p class="text-secondary mb-4" style="max-width:48rem">
   Annotate a whole genome or metagenome and assess it <strong>per contig</strong>. Every protein is
-  annotated with <span class="gx-mono">DeepGO-PlusPlus-Light</span> (a CPU multi-evidence ensemble);
+  annotated with <span class="gx-mono">DeepGO-PlusPlus-Light</span> (a multi-evidence ensemble);
   GSPA then computes genome-scale quality metrics and can optionally enforce taxon consistency,
   completeness and coherence over the Gene Ontology &mdash; recording full provenance for every call.
 </p>
@@ -96,7 +96,7 @@
       <div class="gx-sec">
         <h3><span class="gx-num">3</span> Genome-scale metrics</h3>
         <p class="gx-sub">Function predictor is fixed to
-          <span class="pill">DeepGO-PlusPlus-Light · CPU</span>
+          <span class="pill">DeepGO-PlusPlus-Light</span>
           (DIAMOND BLAST-KNN + STRING Net-KNN + a learned integrator).</p>
         <div class="gx-field mb-0">
           {{ form.metrics_scope.label_tag }}

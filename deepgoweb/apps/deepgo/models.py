@@ -95,7 +95,7 @@ class PredictionGroup(models.Model):
         ('fasta', 'FASTA'))
 
     # Which predictor to run. 'deepgoplus' = the original release-based CNN + DIAMOND
-    # model; 'dgpp-light' = DeepGO-PlusPlus-Light, the CPU-only cascade that combines
+    # model; 'dgpp-light' = DeepGO-PlusPlus-Light, the multi-evidence cascade that combines
     # several heterogeneous components (DIAMOND BLAST-KNN, homology-bridged STRING
     # Net-KNN, a hierarchy-aware C-HMCNN CNN over the GO is_a+part_of DAG, an ESM2-35M
     # embedding kNN, and ProteInfer) with a learned per-aspect integrator. The CNN is
@@ -104,7 +104,7 @@ class PredictionGroup(models.Model):
     PREDICTOR_CHOICES = (
         ('deepgoplus', 'DeepGOPlus (CNN + DIAMOND)'),
         ('dgpp-light',
-         'DeepGO-PlusPlus-Light — CPU multi-evidence ensemble '
+         'DeepGO-PlusPlus-Light — multi-evidence ensemble '
          '(DIAMOND + STRING-Net + hierarchy-aware CNN + ESM2-kNN + ProteInfer)'))
 
     data = models.TextField()

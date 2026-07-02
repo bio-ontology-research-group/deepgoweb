@@ -18,7 +18,7 @@ docker compose up           # first start downloads ~2 GB of assets into volumes
 | asset | into | source |
 |---|---|---|
 | **DG++Light bundle** (`train_db.dmnd`, `train_net_index.tsv`, `train_terms.tsv`, `go-dag.tsv`, `go.obo`, `train_esm2_35m.npz`, `esm2_35m_mcm.pt`, `cnn_mcm.pt`) | `assets` volume → `/opt/dgpp_assets` | `bio2vec.net/data/deepgoweb/dgpp_assets/` |
-| **legacy DeepGOPlus release** (`go.obo`, `terms.pkl`, `train_data.pkl`, `model.h5`) | `release_data` volume → `/opt-data/extracted/<ver>/` | `bio2vec.net/data/deepgo/extracted/<ver>/` |
+| **legacy DeepGOPlus release** (`go.obo`, `terms.pkl`, `train_data.pkl`, `train_data.dmnd`, `model.h5`) | `release_data` volume → `/opt-data/extracted/<ver>/` | `bio2vec.net/data/deepgo/extracted/<ver>/` |
 | **ESM2-35M weights** | image torch-hub cache (worker startup warmup) | HuggingFace via `fair-esm` |
 
 The download is idempotent (existing files are skipped). After the first run set
@@ -74,7 +74,7 @@ docker compose exec web python manage.py loadrelease 1.0.18 \
 ```
 
 The DeepGOPlus release directory must contain the archived files used by the legacy
-predictor, including `go.obo`, `terms.pkl`, `train_data.pkl`, `model.h5`, and
+predictor, including `go.obo`, `terms.pkl`, `train_data.pkl`, `train_data.dmnd`, `model.h5`, and
 release metadata when available.
 
 ### DeepGO-PlusPlus-Light Release
