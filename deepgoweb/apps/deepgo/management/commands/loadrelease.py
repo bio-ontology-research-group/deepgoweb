@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 import os
 import logging
-from deepgo.models import Release
+from deepgo.models import CafaMetrics, Release
 import json
 logging.basicConfig(level=logging.INFO)
 ROOT = "/opt-data/extracted/"
@@ -28,6 +28,10 @@ class Command(BaseCommand):
             '--notes', type=str, default='',
             help='Inline release notes (HTML). If omitted, RELEASE.html in the '
                  'data-root is used when present.')
+        parser.add_argument(
+            '--metrics-json', type=str, default='',
+            help='CAFA metrics JSON to ingest for this release. If omitted, '
+                 'cafa_metrics.json or metrics.json in the data-root is used when present.')
 
     def handle(self, *args, **options):
         version = options['version']
@@ -66,5 +70,40 @@ class Command(BaseCommand):
             ),
         )
         action = 'created' if created else 'updated'
+        metrics_path = options['metrics_json']
+        if not metrics_path:
+            for name in ('cafa_metrics.json', 'metrics.json'):
+                candidate = os.path.join(version_path, name)
+                if os.path.exists(candidate):
+                    metrics_path = candidate
+                    break
+        metrics_count = 0
+        if metrics_path:
+            if not os.path.exists(metrics_path):
+                raise CommandError(f'no such metrics-json: {metrics_path}')
+            with open(metrics_path) as f:
+                payload = json.load(f)
+            protocol = payload.get('protocol', 'cafa6-recon')
+            rows = payload.get('metrics', [])
+            if not rows:
+                raise CommandError(f'metrics JSON has no "metrics" array: {metrics_path}')
+            for row in rows:
+                CafaMetrics.objects.update_or_create(
+                    release=rel,
+                    knowledge_class=row['knowledge_class'],
+                    protocol=protocol,
+                    defaults=dict(
+                        fmax=row['fmax'],
+                        fmax_mf=row.get('fmax_mf'),
+                        fmax_bp=row.get('fmax_bp'),
+                        fmax_cc=row.get('fmax_cc'),
+                        coverage=row.get('coverage'),
+                        notes=row.get('notes', ''),
+                    ),
+                )
+                metrics_count += 1
         self.stdout.write(self.style.SUCCESS(
             f'{action} {predictor} Release {version} (pk={rel.pk}) -> {version_path}'))
+        if metrics_count:
+            self.stdout.write(self.style.SUCCESS(
+                f'loaded {metrics_count} CafaMetrics row(s) from {metrics_path}'))

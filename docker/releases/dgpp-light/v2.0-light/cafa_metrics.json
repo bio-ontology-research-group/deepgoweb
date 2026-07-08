@@ -1,0 +1,10 @@
+{
+  "protocol": "cafa6-recon",
+  "metrics": [
+    {
+      "knowledge_class": "no_knowledge",
+      "fmax": 0.513,
+      "notes": "Expected CAFA6 reconstruction IA-weighted F-max for no-knowledge / novel proteins. Computed offline with the cafa6_recon harness and archived with the v2.0-light release."
+    }
+  ]
+}

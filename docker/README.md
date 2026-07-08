@@ -93,6 +93,7 @@ example:
   esm2_35m_mcm.pt
   cnn_mcm.pt
   RELEASE.html
+  cafa_metrics.json
 ```
 
 Then register it:
@@ -104,12 +105,19 @@ docker compose exec web python manage.py loadrelease v2.0-light \
 ```
 
 `loadrelease` is idempotent: rerunning it updates the existing `Release` row for
-that version. The web form exposes DG++Light only when a `dgpp-light` release exists.
+that version. It also refreshes the changelog notes from `RELEASE.html` and, when
+present, ingests `cafa_metrics.json` or `metrics.json` into the CAFA metrics table.
+The web form exposes DG++Light only when a `dgpp-light` release exists.
+
+When retraining or updating the model, do not overwrite the old archive in place.
+Create a new versioned directory, copy the model assets plus `RELEASE.html` and
+`cafa_metrics.json`, then run `loadrelease <new-version> --predictor dgpp-light`.
+That single command makes the new version selectable and updates the changelog.
 
 ### CAFA Metrics
 
-Performance metrics are computed offline and archived as JSON. Ingest them into the
-registered release with:
+Performance metrics are computed offline and archived as JSON. If metrics are added
+after the release was registered, ingest them explicitly with:
 
 ```bash
 docker compose exec web python manage.py loadmetrics v2.0-light /path/to/metrics.json
