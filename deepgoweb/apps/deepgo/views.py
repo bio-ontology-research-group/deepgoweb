@@ -381,11 +381,12 @@ class ReleaseListView(ListView):
 
     def get_queryset(self, *args, **kwargs):
         queryset = super(ReleaseListView, self).get_queryset(*args, **kwargs)
-        return queryset.order_by('-date')
+        return queryset.order_by('-date', '-version')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        qs = Release.objects.prefetch_related('cafa_metrics').order_by('-date')
+        qs = Release.objects.prefetch_related('cafa_metrics').order_by(
+            '-date', '-version')
         # (section label, releases) pairs; the template renders one block each.
         ctx['sections'] = [
             ('DeepGOPlus', qs.filter(predictor_type='deepgoplus')),

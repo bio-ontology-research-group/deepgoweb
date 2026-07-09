@@ -2,6 +2,7 @@ from django import forms
 from django.utils.safestring import mark_safe
 from deepgo.models import GenomeJob, Prediction, PredictionGroup, Release
 import datetime
+import os
 from django.conf import settings
 from deepgo.tasks import predict_functions, predict_group_dgpp
 from django.core.exceptions import ValidationError
@@ -54,6 +55,13 @@ class PredictionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['data'].label = 'Sequences'
+        deepgoplus_releases = Release.objects.filter(
+            predictor_type='deepgoplus').order_by('-pk')
+        available_release_pks = [
+            rel.pk for rel in deepgoplus_releases if os.path.isdir(rel.data_root)
+        ]
+        self.fields['release'].queryset = deepgoplus_releases.filter(
+            pk__in=available_release_pks)
         # Offer DeepGO-PlusPlus-Light only when it is enabled AND at least one
         # versioned dgpp-light Release has been archived (loadrelease + loadmetrics).
         cfg = getattr(settings, 'DGPP_LIGHT', None)
