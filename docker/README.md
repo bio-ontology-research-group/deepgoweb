@@ -134,6 +134,7 @@ docker compose build web worker gspa fuseki
 docker compose up -d
 docker compose exec web python manage.py migrate --noinput
 docker compose exec web python manage.py check
+python3 scripts/post_deploy_smoke.py --base-url https://deepgo.bio2vec.net
 ```
 
 For a GPU worker, verify CUDA and warmup:
