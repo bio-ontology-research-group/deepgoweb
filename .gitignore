@@ -14,3 +14,5 @@ sparql/.gradle/
 
 # local docker env (secrets) — never commit
 .env
+scripts/take_data_ontolinator.env
+scripts/ontolinator/metadata/update.env

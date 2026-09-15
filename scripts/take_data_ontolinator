@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# Install one versioned DeepGOPlus release produced by Ontolinator.
+#
+# Usage:
+#   take_data_ontolinator data-1.0.29.tar.gz
+#
+# The source archive is pulled using the invoking user's SSH credentials. Root is
+# used only for writing /opt-data, and Django commands run as the deepgo account.
+set -Eeuo pipefail
+
+umask 022
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+config_file="${TAKE_DATA_CONFIG:-${script_dir}/take_data_ontolinator.env}"
+[[ -r $config_file ]] || { printf 'Missing private configuration: %s\n' "$config_file" >&2; exit 1; }
+# This host-local file must be owned and protected by the deployment account.
+source "$config_file"
+
+SOURCE_HOST="${SOURCE_HOST:?set SOURCE_HOST in the private configuration}"
+SOURCE_DIR="${SOURCE_DIR:?set SOURCE_DIR in the private configuration}"
+ARCHIVE_ROOT="${ARCHIVE_ROOT:?set ARCHIVE_ROOT in the private configuration}"
+RELEASE_ROOT="${RELEASE_ROOT:-${ARCHIVE_ROOT}/extracted}"
+APP_ROOT="${APP_ROOT:?set APP_ROOT in the private configuration}"
+APP_PYTHON="${APP_PYTHON:-}"
+SERVICE_USER="${SERVICE_USER:?set SERVICE_USER in the private configuration}"
+SERVICE_GROUP="${SERVICE_GROUP:?set SERVICE_GROUP in the private configuration}"
+
+log() {
+    printf '[take_data_ontolinator] %s\n' "$*"
+}
+
+die() {
+    log "ERROR: $*" >&2
+    exit 1
+}
+
+usage() {
+    printf 'Usage: %s data-X.Y.Z.tar.gz\n' "${0##*/}" >&2
+    exit 2
+}
+
+[[ $# -eq 1 ]] || usage
+filename=$1
+
+# Restrict the remotely supplied argument to the release filename format. This
+# prevents path traversal, shell metacharacters, and accidental non-release files.
+if [[ $filename =~ ^data-([0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz$ ]]; then
+    version=${BASH_REMATCH[1]}
+else
+    die "invalid release filename: $filename"
+fi
+
+[[ $filename == "${filename##*/}" ]] || die "filename must not contain a path"
+command -v scp >/dev/null || die "scp is not installed"
+command -v flock >/dev/null || die "flock is not installed"
+command -v python3 >/dev/null || die "python3 is not installed"
+command -v sudo >/dev/null || die "sudo is not installed"
+sudo -u "$SERVICE_USER" test -f "$APP_ROOT/manage.py" || \
+    die "Django application is not readable by $SERVICE_USER: $APP_ROOT/manage.py"
+if [[ -z $APP_PYTHON ]]; then
+    for candidate in "$APP_ROOT/venv/bin/python" "$APP_ROOT/venv/bin/python3" \
+        "$APP_ROOT/.venv/bin/python" "$APP_ROOT/.venv/bin/python3"; do
+        if sudo -u "$SERVICE_USER" test -x "$candidate"; then
+            APP_PYTHON=$candidate
+            break
+        fi
+    done
+fi
+[[ -n $APP_PYTHON ]] || \
+    die "no virtualenv Python found under $APP_ROOT/venv or .venv; set APP_PYTHON to the interpreter used by the old website"
+sudo -u "$SERVICE_USER" test -x "$APP_PYTHON" || \
+    die "Python is not executable by $SERVICE_USER: $APP_PYTHON"
+
+required_files=(
+    go.obo
+    terms.pkl
+    train_data.pkl
+    train_data.dmnd
+    model.h5
+    RELEASE.html
+    metadata/last_release.json
+)
+
+validate_release_dir() {
+    local release_dir=$1 required metadata_version
+
+    sudo test -d "$release_dir" || die "release directory does not exist: $release_dir"
+    for required in "${required_files[@]}"; do
+        sudo test -s "$release_dir/$required" || die "missing or empty required file: $required"
+    done
+
+    metadata_version=$(sudo -u "$SERVICE_USER" python3 - \
+        "$release_dir/metadata/last_release.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["version"])
+PY
+    )
+    [[ $metadata_version == "$version" ]] || \
+        die "metadata version $metadata_version does not match filename version $version"
+}
+
+register_release() {
+    log "registering release $version in DeepGOWeb"
+    sudo -u "$SERVICE_USER" -- sh -c \
+        'cd "$1" && exec "$2" manage.py loadrelease "$3"' \
+        sh "$APP_ROOT" "$APP_PYTHON" "$version"
+    sudo -u "$SERVICE_USER" -- sh -c \
+        'cd "$1" && exec "$2" manage.py shell -c "$3"' \
+        sh "$APP_ROOT" "$APP_PYTHON" \
+        "from deepgo.models import Release; r=Release.objects.get(version='$version'); assert str(r.data_root) == '$final_dir'; print(r.version, r.data_root)"
+}
+
+# Only one installation may run at a time. The lock belongs to the SSH account,
+# so acquiring it does not require root and concurrent remote calls fail cleanly.
+lock_file="${HOME}/.take_data_ontolinator.lock"
+exec 9>"$lock_file"
+flock -n 9 || die "another release installation is already running"
+
+final_dir="${RELEASE_ROOT}/${version}"
+archive_path="${ARCHIVE_ROOT}/${filename}"
+
+# A previous run may have atomically published the directory and then lost its
+# database connection. Validate and register that complete release on retry.
+if sudo test -d "$final_dir"; then
+    log "release directory already exists; validating and registering it"
+    validate_release_dir "$final_dir"
+    register_release
+    log "release $version is registered at $final_dir"
+    exit 0
+fi
+
+download_dir=$(mktemp -d "${TMPDIR:-/tmp}/deepgo-release.XXXXXXXX")
+download_path="${download_dir}/${filename}"
+stage_dir=''
+
+cleanup() {
+    local status=$?
+    if [[ -n $stage_dir && $stage_dir == "$RELEASE_ROOT"/.stage-"$version".* ]]; then
+        sudo rm -rf -- "$stage_dir"
+    fi
+    rm -rf -- "$download_dir"
+    exit "$status"
+}
+trap cleanup EXIT HUP INT TERM
+
+log "retrieving ${SOURCE_HOST}:${SOURCE_DIR}/${filename}"
+scp -- "${SOURCE_HOST}:${SOURCE_DIR}/${filename}" "$download_path"
+[[ -s $download_path ]] || die "downloaded archive is empty"
+chmod 0711 "$download_dir"
+chmod 0644 "$download_path"
+gzip -t -- "$download_path" || die "gzip integrity check failed"
+
+# Reject absolute paths and parent-directory traversal before extracting an
+# archive received from another machine.
+while IFS= read -r member; do
+    [[ $member != /* ]] || die "archive contains an absolute path: $member"
+    [[ "/$member/" != *"/../"* ]] || die "archive contains path traversal: $member"
+done < <(tar -tzf "$download_path")
+
+sudo install -d -o "$SERVICE_USER" -g "$SERVICE_GROUP" -m 0755 \
+    "$ARCHIVE_ROOT" "$RELEASE_ROOT"
+
+if sudo test -e "$final_dir"; then
+    die "release directory already exists; refusing to overwrite: $final_dir"
+fi
+
+stage_dir=$(sudo mktemp -d "${RELEASE_ROOT}/.stage-${version}.XXXXXXXX")
+sudo chown "$SERVICE_USER:$SERVICE_GROUP" "$stage_dir"
+
+log "extracting and validating release $version"
+sudo -u "$SERVICE_USER" tar -xzf "$download_path" \
+    --no-same-owner --no-same-permissions --directory "$stage_dir"
+
+sudo test -d "$stage_dir/data" || die "archive does not contain the expected data/ directory"
+
+# Normalize Ontolinator's data/<assets> archive layout to the layout consumed by
+# DeepGOWeb: <release>/<assets>, while retaining metadata/last_release.json.
+sudo -u "$SERVICE_USER" find "$stage_dir/data" -mindepth 1 -maxdepth 1 \
+    -exec mv -t "$stage_dir" -- {} +
+sudo -u "$SERVICE_USER" rmdir "$stage_dir/data"
+validate_release_dir "$stage_dir"
+
+# Keep an immutable copy of the package. install(1) writes a temporary copy at
+# the destination and gives it predictable ownership and permissions.
+sudo install -o "$SERVICE_USER" -g "$SERVICE_GROUP" -m 0644 \
+    "$download_path" "${archive_path}.new"
+sudo mv -- "${archive_path}.new" "$archive_path"
+
+# Atomic publication: readers see either no directory or the complete release.
+sudo mv -- "$stage_dir" "$final_dir"
+stage_dir=''
+
+# Confirm registration before changing the conventional latest-archive link.
+register_release
+
+sudo ln -sfn -- "$archive_path" "${ARCHIVE_ROOT}/data.tar.gz"
+sudo chown -h "$SERVICE_USER:$SERVICE_GROUP" "${ARCHIVE_ROOT}/data.tar.gz"
+
+log "release $version installed successfully at $final_dir"
